@@ -5,8 +5,12 @@
  * It is included in `src/index.html`.
  */
 
+// Set Cesium base URL before importing Cesium/Resium
+window.CESIUM_BASE_URL = "/cesium/";
+
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import "cesium/Build/Cesium/Widgets/widgets.css";
 import { App } from "./App";
 
 const elem = document.getElementById("root")!;

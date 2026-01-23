@@ -3,7 +3,18 @@ import index from "./index.html";
 
 const server = serve({
   routes: {
-    // Serve index.html for all unmatched routes.
+    // Serve Cesium static assets
+    "/cesium/*": async (req) => {
+      const url = new URL(req.url);
+      const filePath = `./public${url.pathname}`;
+      const file = Bun.file(filePath);
+      if (await file.exists()) {
+        return new Response(file);
+      }
+      return new Response("Not found", { status: 404 });
+    },
+
+    // Serve index.html for all unmatched routes (must be last)
     "/*": index,
 
     "/api/hello": {
