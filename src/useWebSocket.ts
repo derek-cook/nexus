@@ -42,7 +42,7 @@ export function useWebSocket(url: string = `ws://${window.location.host}/ws`) {
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
   const [connectionId, setConnectionId] = useState<string | null>(null);
   const [subscribedChannels, setSubscribedChannels] = useState<Set<string>>(
-    new Set(),
+    new Set()
   );
 
   const connect = useCallback(() => {
@@ -106,13 +106,19 @@ export function useWebSocket(url: string = `ws://${window.location.host}/ws`) {
     }
   }, []);
 
-  const subscribe = useCallback((channel: string) => {
-    send({ type: "subscribe", channel });
-  }, [send]);
+  const subscribe = useCallback(
+    (channel: string) => {
+      send({ type: "subscribe", channel });
+    },
+    [send]
+  );
 
-  const unsubscribe = useCallback((channel: string) => {
-    send({ type: "unsubscribe", channel });
-  }, [send]);
+  const unsubscribe = useCallback(
+    (channel: string) => {
+      send({ type: "unsubscribe", channel });
+    },
+    [send]
+  );
 
   useEffect(() => {
     connect();
@@ -151,6 +157,7 @@ export function useAircraftUpdates() {
     if (msg?.channel === "aircraft" && msg?.type === "aircraft-update") {
       setAircraft(msg.aircraft);
       setLastUpdate(msg.timestamp);
+      console.log({ aircraft: msg.aircraft });
     }
   }, [ws.lastMessage]);
 

@@ -10,6 +10,7 @@ import {
 } from "resium";
 import * as Cesium from "cesium";
 import { HeadingPitchRange } from "cesium";
+import { useAircraftUpdates } from "./useWebSocket";
 
 // const terrainProvider = Cesium.createWorldTerrainAsync();
 
@@ -55,6 +56,7 @@ function Aircraft() {
 }
 
 export function App() {
+  const { aircraft } = useAircraftUpdates();
   return (
     <Viewer
       full

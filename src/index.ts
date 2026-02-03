@@ -56,9 +56,56 @@ function parseOpenSkyStates(data: OpenSkyResponse): OpenSkyState[] {
   }));
 }
 
-// OpenSky credentials from environment
-const OPENSKY_USERNAME = process.env.OPENSKY_USERNAME;
-const OPENSKY_PASSWORD = process.env.OPENSKY_PASSWORD;
+// OpenSky OAuth2 credentials from environment
+const OPENSKY_CLIENT_ID = process.env.OPENSKY_CLIENT_ID;
+const OPENSKY_CLIENT_SECRET = process.env.OPENSKY_CLIENT_SECRET;
+const OPENSKY_TOKEN_URL =
+  "https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token";
+
+// Token cache
+let accessToken: string | null = null;
+let tokenExpiresAt: number = 0;
+
+// Get or refresh OAuth2 access token
+async function getAccessToken(): Promise<string | null> {
+  if (!OPENSKY_CLIENT_ID || !OPENSKY_CLIENT_SECRET) {
+    return null;
+  }
+
+  // Return cached token if still valid (with 1 min buffer)
+  if (accessToken && Date.now() < tokenExpiresAt - 60_000) {
+    return accessToken;
+  }
+
+  try {
+    const response = await fetch(OPENSKY_TOKEN_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        grant_type: "client_credentials",
+        client_id: OPENSKY_CLIENT_ID,
+        client_secret: OPENSKY_CLIENT_SECRET,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error(`OpenSky token error: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    accessToken = data.access_token;
+    // Token expires in 30 min, but use the actual expires_in value
+    tokenExpiresAt = Date.now() + (data.expires_in || 1800) * 1000;
+    console.log("OpenSky access token refreshed");
+    return accessToken;
+  } catch (error) {
+    console.error("Failed to get OpenSky token:", error);
+    return null;
+  }
+}
 
 // Fetch aircraft data from OpenSky Network API
 async function fetchAircraftData(bounds?: {
@@ -81,12 +128,28 @@ async function fetchAircraftData(bounds?: {
     }
 
     const headers: HeadersInit = {};
-    if (OPENSKY_USERNAME && OPENSKY_PASSWORD) {
-      headers.Authorization =
-        "Basic " + btoa(`${OPENSKY_USERNAME}:${OPENSKY_PASSWORD}`);
+    const token = await getAccessToken();
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
     }
 
     const response = await fetch(url, { headers });
+
+    if (response.status === 401) {
+      // Token expired, clear cache and retry once
+      accessToken = null;
+      tokenExpiresAt = 0;
+      const newToken = await getAccessToken();
+      if (newToken) {
+        const retryResponse = await fetch(url, {
+          headers: { Authorization: `Bearer ${newToken}` },
+        });
+        if (retryResponse.ok) {
+          const data: OpenSkyResponse = await retryResponse.json();
+          return parseOpenSkyStates(data);
+        }
+      }
+    }
 
     if (!response.ok) {
       console.error(`OpenSky API error: ${response.status}`);
