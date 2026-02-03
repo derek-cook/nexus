@@ -72,8 +72,8 @@ async function getAccessToken(): Promise<string | null> {
     return null;
   }
 
-  // Return cached token if still valid (with 1 min buffer)
-  if (accessToken && Date.now() < tokenExpiresAt - 60_000) {
+  // Return cached token if still valid (with 30 min buffer)
+  if (accessToken && Date.now() < tokenExpiresAt - 30 * 60_000) {
     return accessToken;
   }
 
@@ -167,25 +167,27 @@ async function fetchAircraftData(bounds?: {
 // Broadcast message to all clients subscribed to a channel
 function broadcastToChannel(channel: string, message: object) {
   const payload = JSON.stringify({ channel, ...message });
-
+  let clientCount = 0;
   for (const client of clients) {
     if (client.data.channels.has(channel)) {
       client.send(payload);
+      clientCount++;
     }
   }
+  console.log(`Broadcasted to ${clientCount} clients on channel ${channel}`);
 }
 
-// Continental US bounding box
-const US_BOUNDS = {
-  lamin: 24.5,
-  lamax: 49.5,
-  lomin: -125,
-  lomax: -66,
+// LA metro area bounding box
+const LA_BOUNDS = {
+  lamin: 33.5, // south of Long Beach
+  lamax: 34.4, // north of Burbank
+  lomin: -119.7, // Pacific coast
+  lomax: -117.4, // past Ontario airport
 };
 
 // Poll OpenSky API and broadcast to aircraft channel subscribers
 async function pollAircraftUpdates() {
-  const aircraft = await fetchAircraftData(US_BOUNDS);
+  const aircraft = await fetchAircraftData(LA_BOUNDS);
 
   if (aircraft.length > 0) {
     broadcastToChannel("aircraft", {
@@ -199,7 +201,7 @@ async function pollAircraftUpdates() {
 }
 
 // Start polling interval
-const POLL_INTERVAL_MS = 30_000;
+const POLL_INTERVAL_MS = 10_000;
 setInterval(pollAircraftUpdates, POLL_INTERVAL_MS);
 console.log(`Aircraft polling started (every ${POLL_INTERVAL_MS / 1000}s)`);
 
@@ -279,6 +281,26 @@ const server = serve<WebSocketData>({
             })
           );
           console.log(`Client ${ws.data.id} subscribed to ${msg.channel}`);
+
+          // Immediately send aircraft data when subscribing to aircraft channel
+          if (msg.channel === "aircraft") {
+            fetchAircraftData(LA_BOUNDS).then((aircraft) => {
+              if (aircraft.length > 0) {
+                ws.send(
+                  JSON.stringify({
+                    channel: "aircraft",
+                    type: "aircraft-update",
+                    timestamp: Date.now(),
+                    count: aircraft.length,
+                    aircraft,
+                  })
+                );
+                console.log(
+                  `Sent initial ${aircraft.length} aircraft to client ${ws.data.id}`
+                );
+              }
+            });
+          }
           return;
         }
 
@@ -295,6 +317,7 @@ const server = serve<WebSocketData>({
         }
       } catch {
         // Not JSON, treat as regular message
+        console.log(`Received non-JSON message: ${text}`);
       }
 
       // Echo other messages back

@@ -1,30 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 
-export interface AircraftState {
-  icao24: string;
-  callsign: string | null;
-  originCountry: string;
-  timePosition: number | null;
-  lastContact: number;
-  longitude: number | null;
-  latitude: number | null;
-  baroAltitude: number | null;
-  onGround: boolean;
-  velocity: number | null;
-  trueTrack: number | null;
-  verticalRate: number | null;
-  geoAltitude: number | null;
-  squawk: string | null;
-}
-
-export interface AircraftUpdateMessage {
-  channel: "aircraft";
-  type: "aircraft-update";
-  timestamp: number;
-  count: number;
-  aircraft: AircraftState[];
-}
-
 export interface WebSocketMessage {
   type: string;
   channel?: string;
@@ -35,9 +10,11 @@ export interface WebSocketMessage {
 }
 
 export type WebSocketStatus = "connecting" | "connected" | "disconnected";
+export type MessageListener = (message: WebSocketMessage) => void;
 
 export function useWebSocket(url: string = `ws://${window.location.host}/ws`) {
   const wsRef = useRef<WebSocket | null>(null);
+  const listenersRef = useRef<Set<MessageListener>>(new Set());
   const [status, setStatus] = useState<WebSocketStatus>("disconnected");
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
   const [connectionId, setConnectionId] = useState<string | null>(null);
@@ -51,7 +28,8 @@ export function useWebSocket(url: string = `ws://${window.location.host}/ws`) {
     setStatus("connecting");
     const ws = new WebSocket(url);
 
-    ws.onopen = () => {
+    ws.onopen = (e) => {
+      console.log("OPEN", e);
       setStatus("connected");
     };
 
@@ -59,6 +37,11 @@ export function useWebSocket(url: string = `ws://${window.location.host}/ws`) {
       try {
         const message = JSON.parse(event.data);
         setLastMessage(message);
+
+        // Notify all listeners
+        for (const listener of listenersRef.current) {
+          listener(message);
+        }
 
         if (message.type === "connected" && message.id) {
           setConnectionId(message.id);
@@ -76,7 +59,11 @@ export function useWebSocket(url: string = `ws://${window.location.host}/ws`) {
           });
         }
       } catch {
-        setLastMessage({ type: "raw", data: event.data });
+        const rawMessage = { type: "raw", data: event.data };
+        setLastMessage(rawMessage);
+        for (const listener of listenersRef.current) {
+          listener(rawMessage);
+        }
       }
     };
 
@@ -100,9 +87,16 @@ export function useWebSocket(url: string = `ws://${window.location.host}/ws`) {
   }, []);
 
   const send = useCallback((data: string | object) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
+    const ws = wsRef.current;
+    console.log("send called", {
+      data,
+      readyState: ws?.readyState,
+      isOpen: ws?.readyState === WebSocket.OPEN,
+    });
+    if (ws?.readyState === WebSocket.OPEN) {
       const message = typeof data === "string" ? data : JSON.stringify(data);
-      wsRef.current.send(message);
+      ws.send(message);
+      console.log("message sent", message);
     }
   }, []);
 
@@ -120,6 +114,13 @@ export function useWebSocket(url: string = `ws://${window.location.host}/ws`) {
     [send]
   );
 
+  const addMessageListener = useCallback((listener: MessageListener) => {
+    listenersRef.current.add(listener);
+    return () => {
+      listenersRef.current.delete(listener);
+    };
+  }, []);
+
   useEffect(() => {
     connect();
     return () => disconnect();
@@ -133,39 +134,8 @@ export function useWebSocket(url: string = `ws://${window.location.host}/ws`) {
     send,
     subscribe,
     unsubscribe,
+    addMessageListener,
     connect,
     disconnect,
-  };
-}
-
-// Convenience hook for aircraft updates
-export function useAircraftUpdates() {
-  const ws = useWebSocket();
-  const [aircraft, setAircraft] = useState<AircraftState[]>([]);
-  const [lastUpdate, setLastUpdate] = useState<number | null>(null);
-
-  // Subscribe to aircraft channel when connected
-  useEffect(() => {
-    if (ws.status === "connected" && !ws.subscribedChannels.has("aircraft")) {
-      ws.subscribe("aircraft");
-    }
-  }, [ws.status, ws.subscribedChannels, ws.subscribe]);
-
-  // Handle aircraft update messages
-  useEffect(() => {
-    const msg = ws.lastMessage as AircraftUpdateMessage | null;
-    if (msg?.channel === "aircraft" && msg?.type === "aircraft-update") {
-      setAircraft(msg.aircraft);
-      setLastUpdate(msg.timestamp);
-      console.log({ aircraft: msg.aircraft });
-    }
-  }, [ws.lastMessage]);
-
-  return {
-    aircraft,
-    lastUpdate,
-    count: aircraft.length,
-    status: ws.status,
-    isSubscribed: ws.subscribedChannels.has("aircraft"),
   };
 }

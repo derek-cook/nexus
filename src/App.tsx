@@ -1,69 +1,34 @@
-import {
-  Viewer,
-  Entity,
-  CameraFlyTo,
-  Camera,
-  ModelGraphics,
-  Scene,
-  Clock,
-  useCesium,
-} from "resium";
+import { Viewer, Entity, RectangleGraphics } from "resium";
 import * as Cesium from "cesium";
-import { HeadingPitchRange } from "cesium";
-import { useAircraftUpdates } from "./useWebSocket";
+import { AircraftPoints } from "./components/AircraftPoints";
+import { Aircraft } from "./components/Aircraft";
 
-// const terrainProvider = Cesium.createWorldTerrainAsync();
-
-function Aircraft() {
-  const { viewer } = useCesium();
-
-  const position = Cesium.Cartesian3.fromDegrees(-95.0, 40.0, 10.0);
-  const heading = Cesium.Math.toRadians(0);
-  const pitch = 0;
-  const roll = 0;
-  const hpr = new Cesium.HeadingPitchRoll(heading, pitch, roll);
-  const orientation = Cesium.Transforms.headingPitchRollQuaternion(
-    position,
-    hpr
-  );
-
-  return (
-    viewer && (
-      <Entity
-        position={position}
-        orientation={orientation}
-        name="airplane"
-        description="Boeing 747"
-        onClick={(event, target) => {
-          viewer?.flyTo(target.id, {
-            duration: 3,
-            offset: new HeadingPitchRange(
-              heading + Cesium.Math.toRadians(90),
-              Cesium.Math.toRadians(-45),
-              100
-            ),
-          });
-        }}
-      >
-        <ModelGraphics
-          uri="/cesium/Assets/Cesium_Air.glb"
-          maximumScale={20000}
-          minimumPixelSize={128}
-        />
-      </Entity>
-    )
-  );
-}
+// LA metro area bounding box
+const LA_BOUNDS = Cesium.Rectangle.fromDegrees(
+  -118.7, // West
+  33.5, // South
+  -117.4, // East
+  34.4 // North
+);
 
 export function App() {
-  const { aircraft } = useAircraftUpdates();
   return (
     <Viewer
       full
       shouldAnimate={true}
       baseLayerPicker={false}
     >
+      <AircraftPoints />
       <Aircraft />
+      <Entity name="LA Metro Area">
+        <RectangleGraphics
+          coordinates={LA_BOUNDS}
+          material={Cesium.Color.BLUE.withAlpha(0.2)}
+          outline
+          outlineColor={Cesium.Color.BLUE}
+          outlineWidth={2}
+        />
+      </Entity>
     </Viewer>
   );
 }
