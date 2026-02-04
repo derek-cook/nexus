@@ -28,12 +28,20 @@ export function useWebSocket(url: string = `ws://${window.location.host}/ws`) {
     setStatus("connecting");
     const ws = new WebSocket(url);
 
+    // Set ref immediately so handlers can access it
+    wsRef.current = ws;
+
     ws.onopen = (e) => {
-      console.log("OPEN", e);
-      setStatus("connected");
+      console.log("client websocket opened", e);
     };
 
     ws.onmessage = (event) => {
+      console.log("client websocket message");
+      // Ignore messages if this WebSocket is no longer current (e.g., React Strict Mode cleanup)
+      if (wsRef.current !== ws) {
+        return;
+      }
+
       try {
         const message = JSON.parse(event.data);
         setLastMessage(message);
@@ -44,6 +52,7 @@ export function useWebSocket(url: string = `ws://${window.location.host}/ws`) {
         }
 
         if (message.type === "connected" && message.id) {
+          setStatus("connected");
           setConnectionId(message.id);
         }
 
@@ -59,6 +68,7 @@ export function useWebSocket(url: string = `ws://${window.location.host}/ws`) {
           });
         }
       } catch {
+        console.error("Error parsing message", event.data);
         const rawMessage = { type: "raw", data: event.data };
         setLastMessage(rawMessage);
         for (const listener of listenersRef.current) {
@@ -68,17 +78,21 @@ export function useWebSocket(url: string = `ws://${window.location.host}/ws`) {
     };
 
     ws.onclose = () => {
-      setStatus("disconnected");
-      setConnectionId(null);
-      setSubscribedChannels(new Set());
-      wsRef.current = null;
+      console.log("client websocket closed", connectionId);
+      // Only update state if this is still the current WebSocket
+      if (wsRef.current === ws) {
+        setStatus("disconnected");
+        setConnectionId(null);
+        setSubscribedChannels(new Set());
+        wsRef.current = null;
+      }
     };
 
     ws.onerror = () => {
-      setStatus("disconnected");
+      if (wsRef.current === ws) {
+        setStatus("disconnected");
+      }
     };
-
-    wsRef.current = ws;
   }, [url]);
 
   const disconnect = useCallback(() => {
@@ -88,15 +102,14 @@ export function useWebSocket(url: string = `ws://${window.location.host}/ws`) {
 
   const send = useCallback((data: string | object) => {
     const ws = wsRef.current;
-    console.log("send called", {
-      data,
-      readyState: ws?.readyState,
-      isOpen: ws?.readyState === WebSocket.OPEN,
-    });
     if (ws?.readyState === WebSocket.OPEN) {
       const message = typeof data === "string" ? data : JSON.stringify(data);
       ws.send(message);
-      console.log("message sent", message);
+    } else {
+      console.error("send failed: WebSocket not open", {
+        wsExists: ws,
+        readyState: ws?.readyState,
+      });
     }
   }, []);
 
