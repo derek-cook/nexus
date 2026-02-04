@@ -19,20 +19,7 @@ export function App() {
       baseLayerPicker={false}
     >
       <AircraftPoints />
-      <Aircraft />
       <CameraFlyTo destination={LA_BOUNDS} />
-      <Entity
-        id="la-metro-area"
-        name="LA Metro Area"
-      >
-        <RectangleGraphics
-          coordinates={LA_BOUNDS}
-          material={Cesium.Color.BLUE.withAlpha(0.2)}
-          outline
-          outlineColor={Cesium.Color.BLUE}
-          outlineWidth={2}
-        />
-      </Entity>
     </Viewer>
   );
 }
