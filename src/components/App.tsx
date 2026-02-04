@@ -10,12 +10,15 @@ const LA_BOUNDS = Cesium.Rectangle.fromDegrees(
   34.4 // North
 );
 
+const terrainProvider = Cesium.createWorldTerrainAsync();
+
 export function App() {
   return (
     <Viewer
       full
       shouldAnimate={true}
       baseLayerPicker={false}
+      terrainProvider={terrainProvider}
     >
       <AircraftPoints />
       <CameraFlyTo destination={LA_BOUNDS} />
