@@ -13,6 +13,7 @@ export function AircraftPoints() {
     if (!viewer) return;
 
     const currentIds = new Set<string>();
+    viewer.entities.suspendEvents();
 
     // Create or update entities for each aircraft
     for (const ac of aircraft) {
@@ -22,42 +23,28 @@ export function AircraftPoints() {
       const id = `aircraft-${ac.icao24}`;
       currentIds.add(id);
 
-      // Use geoAltitude if available, otherwise baroAltitude, default to 1000m
-      const altitude = ac.geoAltitude ?? ac.baroAltitude ?? 1000;
+      // Use geoAltitude if available, otherwise baroAltitude, default to 0m
+      const altitude = ac.geoAltitude ?? ac.baroAltitude ?? 0;
       const position = Cesium.Cartesian3.fromDegrees(
         ac.longitude,
         ac.latitude,
         altitude
       );
 
-      const entity = viewer.entities.getById(id);
+      const entity = viewer.entities.getOrCreateEntity(id);
 
-      if (entity) {
-        // Update existing entity position
-        entity.position = new Cesium.ConstantPositionProperty(position);
-        entity.description = new Cesium.ConstantProperty(
-          `<pre>${JSON.stringify(ac, null, 2)}</pre>`
-        );
-      } else {
-        // Create new entity
-        viewer.entities.add({
-          id,
-          name: ac.callsign || ac.icao24,
-          position,
-          point: {
-            pixelSize: 8,
-            color: ac.onGround ? Cesium.Color.GRAY : Cesium.Color.YELLOW,
-            outlineColor: Cesium.Color.BLACK,
-            outlineWidth: 1,
-          },
-          description:
-            `Callsign: ${ac.callsign || "N/A"}<br/>` +
-            `ICAO24: ${ac.icao24}<br/>` +
-            `Altitude: ${altitude?.toFixed(0)}m<br/>` +
-            `Velocity: ${ac.velocity?.toFixed(0) || "N/A"} m/s<br/>` +
-            `Country: ${ac.originCountry}`,
-        });
-      }
+      // Update entity properties
+      entity.name = ac.callsign || ac.icao24;
+      entity.position = new Cesium.ConstantPositionProperty(position);
+      entity.description = new Cesium.ConstantProperty(
+        `<pre>${JSON.stringify(ac, null, 2)}</pre>`
+      );
+      entity.point = new Cesium.PointGraphics({
+        pixelSize: 8,
+        color: ac.onGround ? Cesium.Color.GRAY : Cesium.Color.YELLOW,
+        outlineColor: Cesium.Color.BLACK,
+        outlineWidth: 1,
+      });
     }
 
     // Remove entities for aircraft no longer in the list
@@ -69,6 +56,8 @@ export function AircraftPoints() {
         }
       }
     }
+
+    viewer.entities.resumeEvents();
 
     entityIdsRef.current = currentIds;
   }, [viewer, aircraft]);

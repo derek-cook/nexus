@@ -1,4 +1,4 @@
-import { Viewer, Entity, RectangleGraphics } from "resium";
+import { Viewer, Entity, RectangleGraphics, CameraFlyTo } from "resium";
 import * as Cesium from "cesium";
 import { AircraftPoints } from "./components/AircraftPoints";
 import { Aircraft } from "./components/Aircraft";
@@ -20,7 +20,11 @@ export function App() {
     >
       <AircraftPoints />
       <Aircraft />
-      <Entity name="LA Metro Area">
+      <CameraFlyTo destination={LA_BOUNDS} />
+      <Entity
+        id="la-metro-area"
+        name="LA Metro Area"
+      >
         <RectangleGraphics
           coordinates={LA_BOUNDS}
           material={Cesium.Color.BLUE.withAlpha(0.2)}
