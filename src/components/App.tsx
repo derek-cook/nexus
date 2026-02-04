@@ -1,7 +1,7 @@
 import { Viewer, Entity, RectangleGraphics, CameraFlyTo } from "resium";
 import * as Cesium from "cesium";
-import { AircraftPoints } from "./components/AircraftPoints";
-import { Aircraft } from "./components/Aircraft";
+import { AircraftPoints } from "./AircraftPoints";
+import { Aircraft } from "./Aircraft";
 
 // LA metro area bounding box
 const LA_BOUNDS = Cesium.Rectangle.fromDegrees(

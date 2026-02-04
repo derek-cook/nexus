@@ -1,5 +1,5 @@
 import { serve, type Server, type ServerWebSocket } from "bun";
-import index from "./index.html";
+import index from "../index.html";
 import { fetchAircraftData, LA_BOUNDS } from "./aircraft";
 // import { fetchAircraftData, LA_BOUNDS } from "./aircraft-mock";
 
