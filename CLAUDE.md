@@ -36,6 +36,7 @@ src/
 - **Server**: Bun.serve() with WebSocket support
 - **Data Source**: OpenSky Network API (OAuth2)
 
+**OpenSky Network REST API** https://openskynetwork.github.io/opensky-api/rest.html#all-state-vectors
 **Cesium API Docs**: [Cesium.js API](https://cesium.com/learn/cesiumjs/ref-doc/)
 **Flight Tracker tutorial**: [Flight tracker tutorial](https://cesium.com/learn/cesiumjs-learn/cesiumjs-flight-tracker/)
 **Cesium repo**: cloned locally at ../cesium or https://github.com/CesiumGS/cesium
