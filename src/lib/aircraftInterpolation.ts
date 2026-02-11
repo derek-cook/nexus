@@ -17,6 +17,8 @@ export interface AircraftBaseline {
   velocity: number | null; // m/s
   trueTrack: number | null; // degrees from north
   fixTime: number; // timestamp when this fix was received (ms)
+  verticalRate: number | null; // m/s
+  onGround: boolean;
 }
 
 /** Interpolated position with altitude */
@@ -47,7 +49,8 @@ class AircraftInterpolationService {
 
       currentIds.add(ac.icao24);
 
-      const altitude = ac.geoAltitude ?? ac.baroAltitude ?? 0;
+      let altitude = ac.geoAltitude ?? ac.baroAltitude ?? 0;
+      if (ac.onGround) altitude = 0;
 
       this.baselines.set(ac.icao24, {
         icao24: ac.icao24,
@@ -57,6 +60,8 @@ class AircraftInterpolationService {
         velocity: ac.velocity,
         trueTrack: ac.trueTrack,
         fixTime,
+        verticalRate: ac.verticalRate,
+        onGround: ac.onGround,
       });
     }
 
@@ -106,7 +111,7 @@ class AircraftInterpolationService {
     }
 
     // No interpolation if aircraft is stationary
-    if (baseline.velocity === 0) {
+    if (baseline.velocity === 0 || baseline.onGround) {
       return {
         latitude: baseline.latitude,
         longitude: baseline.longitude,
