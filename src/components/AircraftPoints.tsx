@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useCesium } from "resium";
 import * as Cesium from "cesium";
 import { useInterpolatedAircraft } from "../hooks/useInterpolatedAircraft";
+import { getAircraftIconUrl } from "../lib/aircraftIcons";
 
 export function AircraftPoints() {
   const { aircraft, interpolation } = useInterpolatedAircraft();
@@ -53,14 +54,10 @@ export function AircraftPoints() {
       entity.description = new Cesium.ConstantProperty(
         `<pre>${JSON.stringify(ac, null, 2)}</pre>`
       );
-      entity.point = new Cesium.PointGraphics({
-        pixelSize: 8,
-        color: ac.onGround ? Cesium.Color.GRAY : Cesium.Color.YELLOW,
-        outlineColor: Cesium.Color.BLACK,
-        outlineWidth: 1,
-      });
 
       if (isTracked) {
+        entity.billboard = undefined;
+        entity.point = undefined;
         entity.model = new Cesium.ModelGraphics({
           uri: "/cesium/Assets/Cesium_Air.glb",
           maximumScale: 20000,
@@ -108,6 +105,17 @@ export function AircraftPoints() {
         );
       } else {
         entity.model = undefined;
+        entity.point = undefined;
+        entity.billboard = new Cesium.BillboardGraphics({
+          image: getAircraftIconUrl(ac.iconType),
+          color: ac.onGround ? Cesium.Color.GRAY : Cesium.Color.YELLOW,
+          scale: 0.5,
+          rotation: -Cesium.Math.toRadians(ac.trueTrack ?? 0),
+          alignedAxis: Cesium.Cartesian3.UNIT_Z,
+          verticalOrigin: Cesium.VerticalOrigin.CENTER,
+          horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        });
 
         // Use static position for non-tracked entities (updates on each data fix)
         let altitude = ac.geoAltitude ?? ac.baroAltitude ?? 0;
@@ -115,17 +123,6 @@ export function AircraftPoints() {
 
         entity.position = new Cesium.ConstantPositionProperty(
           Cesium.Cartesian3.fromDegrees(ac.longitude, ac.latitude, altitude)
-        );
-
-        const cartesian = Cesium.Cartesian3.fromDegrees(
-          ac.longitude,
-          ac.latitude,
-          altitude
-        );
-        const heading = Cesium.Math.toRadians((ac.trueTrack ?? 0) - 90);
-        const hpr = new Cesium.HeadingPitchRoll(heading, 0, 0);
-        entity.orientation = new Cesium.ConstantProperty(
-          Cesium.Transforms.headingPitchRollQuaternion(cartesian, hpr)
         );
       }
     }

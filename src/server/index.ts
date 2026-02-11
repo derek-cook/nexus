@@ -72,6 +72,17 @@ const server = serve<WebSocketData>({
       return new Response("Not found", { status: 404 });
     },
 
+    // Serve icon assets
+    "/icons/*": async (req: Request) => {
+      const url = new URL(req.url);
+      const filePath = `./public${url.pathname}`;
+      const file = Bun.file(filePath);
+      if (await file.exists()) {
+        return new Response(file);
+      }
+      return new Response("Not found", { status: 404 });
+    },
+
     "/api/hello": {
       async GET() {
         return Response.json({
