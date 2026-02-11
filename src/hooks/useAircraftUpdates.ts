@@ -30,7 +30,6 @@ export function useAircraftUpdates() {
   const ws = useWebSocket();
   const [aircraft, setAircraft] = useState<AircraftState[]>([]);
   const [lastUpdate, setLastUpdate] = useState<number | null>(null);
-  const subscribedRef = useRef(false);
 
   // Handle messages and subscribe when connected
   useEffect(() => {
