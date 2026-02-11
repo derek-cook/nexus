@@ -17,6 +17,7 @@ export function AircraftPoints() {
 
     const handler = () => {
       const tracked = viewer.trackedEntity;
+      console.log("trackedEntityChanged", tracked);
       if (tracked && tracked.id.startsWith("aircraft-")) {
         setTrackedIcao24(tracked.id.replace("aircraft-", ""));
       } else {

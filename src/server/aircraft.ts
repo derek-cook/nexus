@@ -1,3 +1,5 @@
+import { getAircraftMeta, classifyByCategory } from "./aircraft-db";
+
 const DEBUG_FETCH = true;
 
 // OpenSky Network API response types
@@ -16,6 +18,11 @@ export interface OpenSkyState {
   verticalRate: number | null;
   geoAltitude: number | null;
   squawk: string | null;
+  spi: boolean | null;
+  positionSource: number | null;
+  category: number | null;
+  typecode: string | null;
+  iconType: string;
 }
 
 interface OpenSkyResponse {
@@ -57,7 +64,26 @@ function parseOpenSkyStates(data: OpenSkyResponse): OpenSkyState[] {
     verticalRate: state[11] as number | null,
     geoAltitude: state[13] as number | null,
     squawk: state[14] as string | null,
+    spi: state[15] as boolean | null,
+    positionSource: state[16] as number | null,
+    category: state[17] as number | null,
+    typecode: null,
+    iconType: "unknown",
   }));
+}
+
+// Enrich states with metadata from aircraft database
+function enrichWithMetadata(states: OpenSkyState[]): OpenSkyState[] {
+  for (const state of states) {
+    const meta = getAircraftMeta(state.icao24);
+    if (meta) {
+      state.typecode = meta.typecode || null;
+      state.iconType = meta.iconType !== "unknown" ? meta.iconType : classifyByCategory(state.category);
+    } else {
+      state.iconType = classifyByCategory(state.category);
+    }
+  }
+  return states;
 }
 
 // OpenSky OAuth2 credentials from environment
@@ -126,6 +152,7 @@ export async function fetchAircraftData(
         lomin: bounds.lomin.toString(),
         lamax: bounds.lamax.toString(),
         lomax: bounds.lomax.toString(),
+        extended: "1",
       });
       url += `?${params}`;
     }
@@ -151,7 +178,7 @@ export async function fetchAircraftData(
         });
         if (retryResponse.ok) {
           const data: OpenSkyResponse = await retryResponse.json();
-          return parseOpenSkyStates(data);
+          return enrichWithMetadata(parseOpenSkyStates(data));
         }
       }
     }
@@ -162,7 +189,7 @@ export async function fetchAircraftData(
     }
 
     const data: OpenSkyResponse = await response.json();
-    return parseOpenSkyStates(data);
+    return enrichWithMetadata(parseOpenSkyStates(data));
   } catch (error) {
     console.error("Failed to fetch aircraft data:", error);
     return [];

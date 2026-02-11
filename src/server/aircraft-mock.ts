@@ -14,7 +14,6 @@ function generateMockAircraft(bounds: AircraftBounds): OpenSkyState[] {
       originCountry: "United States",
       timePosition: now,
       lastContact: now,
-      // Aircraft positions drift slowly based on time
       longitude: bounds.lomin + 0.5 + Math.sin(now / 60000) * 0.3,
       latitude: bounds.lamin + 0.3 + Math.cos(now / 60000) * 0.2,
       baroAltitude: 10000,
@@ -24,6 +23,11 @@ function generateMockAircraft(bounds: AircraftBounds): OpenSkyState[] {
       verticalRate: 0,
       geoAltitude: 10200,
       squawk: "1200",
+      spi: false,
+      positionSource: 0,
+      category: 4,
+      typecode: "B738",
+      iconType: "jet",
     },
     {
       icao24: "d4e5f6",
@@ -40,6 +44,11 @@ function generateMockAircraft(bounds: AircraftBounds): OpenSkyState[] {
       verticalRate: -5,
       geoAltitude: 8700,
       squawk: "1200",
+      spi: false,
+      positionSource: 0,
+      category: 4,
+      typecode: "A320",
+      iconType: "jet",
     },
     {
       icao24: "g7h8i9",
@@ -56,6 +65,11 @@ function generateMockAircraft(bounds: AircraftBounds): OpenSkyState[] {
       verticalRate: 3,
       geoAltitude: 12200,
       squawk: "1200",
+      spi: false,
+      positionSource: 0,
+      category: 8,
+      typecode: "B407",
+      iconType: "helicopter",
     },
     {
       icao24: "j1k2l3",
@@ -72,6 +86,11 @@ function generateMockAircraft(bounds: AircraftBounds): OpenSkyState[] {
       verticalRate: -8,
       geoAltitude: 6200,
       squawk: "1200",
+      spi: false,
+      positionSource: 0,
+      category: 3,
+      typecode: "DHC6",
+      iconType: "turboprop",
     },
     {
       icao24: "m4n5o6",
@@ -88,6 +107,11 @@ function generateMockAircraft(bounds: AircraftBounds): OpenSkyState[] {
       verticalRate: 2,
       geoAltitude: 3700,
       squawk: "1200",
+      spi: false,
+      positionSource: 0,
+      category: 2,
+      typecode: "C172",
+      iconType: "light",
     },
   ];
 

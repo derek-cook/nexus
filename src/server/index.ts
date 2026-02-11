@@ -1,6 +1,7 @@
 import { serve, type Server, type ServerWebSocket } from "bun";
 import index from "../index.html";
 import { fetchAircraftData, LA_BOUNDS } from "./aircraft";
+import { initAircraftDb } from "./aircraft-db";
 // import { fetchAircraftData, LA_BOUNDS } from "./aircraft-mock";
 
 // Type for WebSocket data attached to each connection
@@ -49,7 +50,11 @@ async function pollAircraftUpdates() {
   }
 }
 
-// Start polling interval
+// Load aircraft metadata database, then start polling
+initAircraftDb().catch((err) =>
+  console.warn("Aircraft DB init failed (continuing without it):", err)
+);
+
 const POLL_INTERVAL_MS = 10_000;
 setInterval(pollAircraftUpdates, POLL_INTERVAL_MS);
 console.log(`Aircraft polling started (every ${POLL_INTERVAL_MS / 1000}s)`);
