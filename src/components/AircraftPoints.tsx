@@ -109,7 +109,7 @@ export function AircraftPoints() {
         entity.billboard = new Cesium.BillboardGraphics({
           image: getAircraftIconUrl(ac.iconType),
           color: ac.onGround ? Cesium.Color.GRAY : Cesium.Color.YELLOW,
-          scale: 0.5,
+          scale: 0.2,
           rotation: -Cesium.Math.toRadians(ac.trueTrack ?? 0),
           alignedAxis: Cesium.Cartesian3.UNIT_Z,
           verticalOrigin: Cesium.VerticalOrigin.CENTER,

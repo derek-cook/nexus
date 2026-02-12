@@ -78,7 +78,10 @@ function enrichWithMetadata(states: OpenSkyState[]): OpenSkyState[] {
     const meta = getAircraftMeta(state.icao24);
     if (meta) {
       state.typecode = meta.typecode || null;
-      state.iconType = meta.iconType !== "unknown" ? meta.iconType : classifyByCategory(state.category);
+      state.iconType =
+        meta.iconType !== "unknown"
+          ? meta.iconType
+          : classifyByCategory(state.category);
     } else {
       state.iconType = classifyByCategory(state.category);
     }

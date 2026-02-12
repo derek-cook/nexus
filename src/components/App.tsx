@@ -1,4 +1,4 @@
-import { Viewer, Entity, RectangleGraphics, CameraFlyTo } from "resium";
+import { Viewer, CameraFlyTo } from "resium";
 import * as Cesium from "cesium";
 import { AircraftPoints } from "./AircraftPoints";
 
