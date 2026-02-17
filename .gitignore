@@ -37,4 +37,4 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 public/cesium
 
 # Aircraft metadata (raw CSV is ~108MB)
-data/aircraftDatabase.csv
+data/*
