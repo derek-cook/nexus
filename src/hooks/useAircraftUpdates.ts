@@ -16,6 +16,8 @@ export interface AircraftState {
   verticalRate: number | null;
   geoAltitude: number | null;
   squawk: string | null;
+  typecode: string | null;
+  iconType: string;
 }
 
 interface AircraftUpdateMessage {

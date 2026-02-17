@@ -1,4 +1,4 @@
-import { Viewer, Entity, RectangleGraphics, CameraFlyTo } from "resium";
+import { Viewer, CameraFlyTo } from "resium";
 import * as Cesium from "cesium";
 import { AircraftPoints } from "./AircraftPoints";
 
@@ -10,15 +10,13 @@ const LA_BOUNDS = Cesium.Rectangle.fromDegrees(
   34.4 // North
 );
 
-const terrainProvider = Cesium.createWorldTerrainAsync();
-
 export function App() {
   return (
     <Viewer
       full
       shouldAnimate={true}
       baseLayerPicker={false}
-      terrainProvider={terrainProvider}
+      sceneMode={Cesium.SceneMode.SCENE2D}
     >
       <AircraftPoints />
       <CameraFlyTo destination={LA_BOUNDS} />
