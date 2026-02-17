@@ -26,7 +26,7 @@ const writer = Bun.file(CSV_PATH).writer();
 let downloaded = 0;
 let lastLog = 0;
 
-for await (const chunk of response.body!) {
+for await (const chunk of response.body! as unknown as AsyncIterable<Uint8Array>) {
   writer.write(chunk);
   downloaded += chunk.length;
 

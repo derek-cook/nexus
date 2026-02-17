@@ -7,5 +7,5 @@ const ICON_MAP: Record<string, string> = {
 };
 
 export function getAircraftIconUrl(iconType: string): string {
-  return ICON_MAP[iconType] ?? ICON_MAP.unknown;
+  return ICON_MAP[iconType] ?? ICON_MAP.unknown!;
 }

@@ -74,7 +74,12 @@ const csvText = await csvFile.text();
 const lines = csvText.split("\n");
 
 // Parse header to find column indices dynamically
-const header = parseCSVLine(lines[0]);
+const headerLine = lines[0];
+if (!headerLine) {
+  console.error("CSV file is empty");
+  process.exit(1);
+}
+const header = parseCSVLine(headerLine);
 const icao24Idx = header.indexOf("icao24");
 const icaoClassIdx = header.indexOf("icaoaircrafttype");
 const typecodeIdx = header.indexOf("typecode");
@@ -94,7 +99,7 @@ let processed = 0;
 let skipped = 0;
 
 for (let i = 1; i < lines.length; i++) {
-  const line = lines[i].trim();
+  const line = lines[i]?.trim();
   if (!line) continue;
 
   const fields = parseCSVLine(line);

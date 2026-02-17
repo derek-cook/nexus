@@ -52,7 +52,10 @@ function classifyAircraft(icaoClass: string): string {
 
   if (
     engineType === "T" &&
-    (engineCount === "3" || engineCount === "4" || engineCount === "6" || engineCount === "8")
+    (engineCount === "3" ||
+      engineCount === "4" ||
+      engineCount === "6" ||
+      engineCount === "8")
   )
     return "jet";
 
@@ -85,7 +88,9 @@ async function loadFromCSV(): Promise<boolean> {
   const csvText = await file.text();
   const lines = csvText.split("\n");
 
-  const header = parseCSVLine(lines[0]);
+  const headerLine = lines[0];
+  if (!headerLine) return false;
+  const header = parseCSVLine(headerLine);
   const icao24Idx = header.indexOf("icao24");
   const icaoClassIdx = header.indexOf("icaoaircrafttype");
   const typecodeIdx = header.indexOf("typecode");
@@ -98,7 +103,7 @@ async function loadFromCSV(): Promise<boolean> {
   const jsonData: Record<string, AircraftMeta> = {};
 
   for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
+    const line = lines[i]?.trim();
     if (!line) continue;
 
     const fields = parseCSVLine(line);
@@ -118,16 +123,19 @@ async function loadFromCSV(): Promise<boolean> {
 
   // Write JSON for next time
   await Bun.write(JSON_PATH, JSON.stringify(jsonData));
-  console.log(`Aircraft DB: parsed ${db.size} entries from CSV, wrote JSON cache`);
+  console.log(
+    `Aircraft DB: parsed ${db.size} entries from CSV, wrote JSON cache`
+  );
   return true;
 }
 
 export async function initAircraftDb(): Promise<void> {
   if (await loadFromJSON()) return;
   if (await loadFromCSV()) return;
-  console.warn(
+  console.error(
     "Aircraft DB: no database files found. Run: bun run download-aircraft-db && bun run preprocess-aircraft-db"
   );
+  process.exit(1);
 }
 
 export function getAircraftMeta(icao24: string): AircraftMeta | null {
