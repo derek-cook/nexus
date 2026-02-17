@@ -11,6 +11,34 @@ export function AircraftPoints() {
 
   const entityIdsRef = useRef<Set<string>>(new Set());
   const [trackedIcao24, setTrackedIcao24] = useState<string | null>(null);
+  const [sceneMode, setSceneMode] = useState(Cesium.SceneMode.SCENE2D);
+
+  // Sync scene mode state on mount + morph transitions
+  useEffect(() => {
+    if (!viewer) return;
+
+    setSceneMode(viewer.scene.mode);
+
+    const handler = () => {
+      const mode = viewer.scene.mode;
+      setSceneMode(mode);
+
+      // Toggle terrain: world terrain in 3D/Columbus, flat ellipsoid in 2D
+      // (avoids Cesium terrain triangulation crash during 3D→2D morph)
+      if (mode === Cesium.SceneMode.SCENE2D) {
+        viewer.terrainProvider = new Cesium.EllipsoidTerrainProvider();
+      } else {
+        Cesium.createWorldTerrainAsync().then((tp) => {
+          viewer.terrainProvider = tp;
+        });
+      }
+    };
+
+    viewer.scene.morphComplete.addEventListener(handler);
+    return () => {
+      viewer.scene.morphComplete.removeEventListener(handler);
+    };
+  }, [viewer]);
 
   // Listen for tracked entity changes
   useEffect(() => {
@@ -18,7 +46,6 @@ export function AircraftPoints() {
 
     const handler = () => {
       const tracked = viewer.trackedEntity;
-      console.log("trackedEntityChanged", tracked);
       if (tracked && tracked.id.startsWith("aircraft-")) {
         setTrackedIcao24(tracked.id.replace("aircraft-", ""));
       } else {
@@ -35,6 +62,7 @@ export function AircraftPoints() {
   useEffect(() => {
     if (!viewer) return;
 
+    const is2D = sceneMode === Cesium.SceneMode.SCENE2D;
     const currentIds = new Set<string>();
     viewer.entities.suspendEvents();
 
@@ -55,15 +83,58 @@ export function AircraftPoints() {
         `<pre>${JSON.stringify(ac, null, 2)}</pre>`
       );
 
-      if (isTracked) {
-        entity.billboard = undefined;
-        entity.point = undefined;
+      // Clear all graphics to prevent stale visuals across mode switches
+      entity.billboard = undefined;
+      entity.point = undefined;
+      entity.model = undefined;
+      entity.orientation = undefined;
+
+      let altitude = ac.geoAltitude ?? ac.baroAltitude ?? 0;
+      if (ac.onGround) altitude = 0;
+
+      if (is2D) {
+        // 2D mode: billboard icons for all aircraft
+        entity.billboard = new Cesium.BillboardGraphics({
+          image: getAircraftIconUrl(ac.iconType),
+          color: ac.onGround ? Cesium.Color.GRAY : Cesium.Color.YELLOW,
+          scale: 0.2,
+          rotation: -Cesium.Math.toRadians(ac.trueTrack ?? 0),
+          alignedAxis: Cesium.Cartesian3.UNIT_Z,
+          verticalOrigin: Cesium.VerticalOrigin.CENTER,
+          horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        });
+
+        if (isTracked) {
+          // Interpolated position for smooth camera follow
+          const icao24 = ac.icao24;
+          entity.position = new Cesium.CallbackPositionProperty(
+            (time: Cesium.JulianDate | undefined, result?: Cesium.Cartesian3) => {
+              if (!time) return undefined;
+              const pos = interpolation.getInterpolatedPosition(icao24, time);
+              if (!pos) return undefined;
+              return Cesium.Cartesian3.fromDegrees(
+                pos.longitude,
+                pos.latitude,
+                pos.altitude,
+                undefined,
+                result
+              );
+            },
+            false
+          );
+        } else {
+          entity.position = new Cesium.ConstantPositionProperty(
+            Cesium.Cartesian3.fromDegrees(ac.longitude, ac.latitude, altitude)
+          );
+        }
+      } else if (isTracked) {
+        // 3D/Columbus, tracked: 3D model with interpolation + orientation
         entity.model = new Cesium.ModelGraphics({
           uri: "/cesium/Assets/Cesium_Air.glb",
           maximumScale: 20000,
         });
 
-        // Use CallbackPositionProperty for smooth interpolation on tracked entity
         const icao24 = ac.icao24;
         entity.position = new Cesium.CallbackPositionProperty(
           (time: Cesium.JulianDate | undefined, result?: Cesium.Cartesian3) => {
@@ -104,22 +175,14 @@ export function AircraftPoints() {
           false
         );
       } else {
-        entity.model = undefined;
-        entity.point = undefined;
-        entity.billboard = new Cesium.BillboardGraphics({
-          image: getAircraftIconUrl(ac.iconType),
+        // 3D/Columbus, non-tracked: point graphics
+        entity.point = new Cesium.PointGraphics({
+          pixelSize: 6,
           color: ac.onGround ? Cesium.Color.GRAY : Cesium.Color.YELLOW,
-          scale: 0.2,
-          rotation: -Cesium.Math.toRadians(ac.trueTrack ?? 0),
-          alignedAxis: Cesium.Cartesian3.UNIT_Z,
-          verticalOrigin: Cesium.VerticalOrigin.CENTER,
-          horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+          outlineColor: Cesium.Color.BLACK,
+          outlineWidth: 1,
           disableDepthTestDistance: Number.POSITIVE_INFINITY,
         });
-
-        // Use static position for non-tracked entities (updates on each data fix)
-        let altitude = ac.geoAltitude ?? ac.baroAltitude ?? 0;
-        if (ac.onGround) altitude = 0;
 
         entity.position = new Cesium.ConstantPositionProperty(
           Cesium.Cartesian3.fromDegrees(ac.longitude, ac.latitude, altitude)
@@ -140,7 +203,7 @@ export function AircraftPoints() {
     viewer.entities.resumeEvents();
 
     entityIdsRef.current = currentIds;
-  }, [viewer, aircraft, interpolation, trackedIcao24]);
+  }, [viewer, aircraft, interpolation, trackedIcao24, sceneMode]);
 
   return null;
 }
