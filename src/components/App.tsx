@@ -1,13 +1,14 @@
-import { Viewer, CameraFlyTo } from "resium";
+import { Viewer, CameraFlyTo, RectangleGraphics, Entity } from "resium";
 import * as Cesium from "cesium";
 import { AircraftPoints } from "./AircraftPoints";
 
-// LA metro area bounding box
-const LA_BOUNDS = Cesium.Rectangle.fromDegrees(
-  -118.7, // West
-  33.5, // South
-  -117.4, // East
-  34.4 // North
+const LAX_LON = -118.4079;
+const LAX_LAT = 33.9416;
+const LAX_RECT = Cesium.Rectangle.fromDegrees(
+  LAX_LON - 2,
+  LAX_LAT - 2,
+  LAX_LON + 2,
+  LAX_LAT + 2
 );
 
 export function App() {
@@ -15,11 +16,20 @@ export function App() {
     <Viewer
       full
       shouldAnimate={true}
-      baseLayerPicker={false}
       sceneMode={Cesium.SceneMode.SCENE2D}
     >
+      <Entity>
+        <RectangleGraphics
+          coordinates={LAX_RECT}
+          material={Cesium.Color.WHITE.withAlpha(0.1)}
+          outline
+          outlineColor={Cesium.Color.WHITE}
+          outlineWidth={3}
+          height={0}
+        />
+      </Entity>
       <AircraftPoints />
-      <CameraFlyTo destination={LA_BOUNDS} />
+      <CameraFlyTo destination={LAX_RECT} />
     </Viewer>
   );
 }
