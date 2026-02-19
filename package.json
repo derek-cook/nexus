@@ -7,6 +7,7 @@
     "dev": "bun --hot src/server/index.ts",
     "start": "NODE_ENV=production bun src/server/index.ts",
     "build": "bun run build.ts",
+    "typecheck": "bunx tsc --noEmit -p tsconfig.app.json",
     "download-aircraft-db": "bun run scripts/download-aircraft-db.ts",
     "preprocess-aircraft-db": "bun run scripts/preprocess-aircraft-db.ts",
     "postinstall": "bun run copy-cesium",

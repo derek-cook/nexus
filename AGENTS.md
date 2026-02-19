@@ -61,6 +61,14 @@ Aircraft rendered as Cesium Entities with:
 - Point graphics (yellow=airborne, gray=ground)
 - Interactive description popups
 
+### Cesium/Resium Viewer Lifecycle
+
+Treat `Viewer` as an imperative root component. Avoid frequent parent-level state updates that trigger `Viewer` rerenders.
+
+- Keep live aircraft data, selection state, and viewer event subscriptions inside child components of `Viewer` (for example `src/components/AircraftPoints.tsx`).
+- Prefer imperative viewer updates from child components (`viewer.selectedEntity`, `viewer.trackedEntity`) over lifting this state into `src/components/App.tsx`.
+- Keep `src/components/App.tsx` mostly static and focused on composition of `Viewer` children.
+
 ## Environment Variables
 
 Copy `.env.example` to `.env` and configure:

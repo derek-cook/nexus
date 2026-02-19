@@ -13,24 +13,26 @@ const LAX_RECT = Cesium.Rectangle.fromDegrees(
 
 export function App() {
   return (
-    <Viewer
-      full
-      shouldAnimate={true}
-      sceneMode={Cesium.SceneMode.SCENE2D}
-    >
-      <Entity>
-        <RectangleGraphics
-          coordinates={LAX_RECT}
-          material={Cesium.Color.WHITE.withAlpha(0.1)}
-          outline
-          outlineColor={Cesium.Color.WHITE}
-          outlineWidth={3}
-          height={0}
-        />
-      </Entity>
-      <AircraftPoints />
-      <CameraFlyTo destination={LAX_RECT} />
-    </Viewer>
+    <div className="relative h-screen w-screen overflow-hidden">
+      <Viewer
+        full
+        shouldAnimate={true}
+        sceneMode={Cesium.SceneMode.SCENE2D}
+      >
+        <Entity>
+          <RectangleGraphics
+            coordinates={LAX_RECT}
+            material={Cesium.Color.WHITE.withAlpha(0.1)}
+            outline
+            outlineColor={Cesium.Color.WHITE}
+            outlineWidth={3}
+            height={0}
+          />
+        </Entity>
+        <AircraftPoints />
+        <CameraFlyTo destination={LAX_RECT} />
+      </Viewer>
+    </div>
   );
 }
 

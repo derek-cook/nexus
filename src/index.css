@@ -10,15 +10,23 @@
   }
 }
 
-/* cool Bun background animation 😎 */
+/* Subtle animated grid texture behind the map */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   z-index: -1;
   opacity: 0.05;
-  background: url("./logo.svg");
-  background-size: 256px;
+  background:
+    radial-gradient(circle at 20% 20%, rgb(56 189 248 / 0.35), transparent 35%),
+    repeating-linear-gradient(
+      -32deg,
+      rgb(15 23 42 / 0.7) 0,
+      rgb(15 23 42 / 0.7) 2px,
+      transparent 2px,
+      transparent 44px
+    );
+  background-size: auto, 256px 256px;
   transform: rotate(-12deg) scale(1.35);
   animation: slide 30s linear infinite;
   pointer-events: none;

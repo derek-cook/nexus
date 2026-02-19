@@ -1,17 +1,46 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCesium } from "resium";
 import * as Cesium from "cesium";
-import { useInterpolatedAircraft } from "../hooks/useInterpolatedAircraft";
 import { getAircraftIconUrl } from "../lib/aircraftIcons";
+import { useInterpolatedAircraft } from "../hooks/useInterpolatedAircraft";
+import type { AircraftState } from "../hooks/useAircraftUpdates";
+import { AircraftSidebar } from "./AircraftSidebar";
+
+type AircraftWithPosition = AircraftState & {
+  longitude: number;
+  latitude: number;
+};
 
 export function AircraftPoints() {
-  const { aircraft, interpolation } = useInterpolatedAircraft();
-
+  const { aircraft, interpolation, status, lastUpdate, isSubscribed } =
+    useInterpolatedAircraft();
   const { viewer } = useCesium();
+
+  const renderableAircraft = useMemo(
+    () =>
+      aircraft.filter(
+        (ac): ac is AircraftWithPosition =>
+          ac.longitude !== null && ac.latitude !== null
+      ),
+    [aircraft]
+  );
 
   const entityIdsRef = useRef<Set<string>>(new Set());
   const [trackedIcao24, setTrackedIcao24] = useState<string | null>(null);
+  const [selectedIcao24, setSelectedIcao24] = useState<string | null>(null);
   const [sceneMode, setSceneMode] = useState(Cesium.SceneMode.SCENE2D);
+
+  const handleSelectAircraft = useCallback(
+    (icao24: string) => {
+      if (!viewer) return;
+
+      const entity = viewer.entities.getById(`aircraft-${icao24}`);
+      if (!entity) return;
+
+      viewer.selectedEntity = entity;
+    },
+    [viewer]
+  );
 
   // Sync scene mode state on mount + morph transitions
   useEffect(() => {
@@ -46,7 +75,7 @@ export function AircraftPoints() {
 
     const handler = () => {
       const tracked = viewer.trackedEntity;
-      if (tracked && tracked.id.startsWith("aircraft-")) {
+      if (tracked?.id && typeof tracked.id === "string" && tracked.id.startsWith("aircraft-")) {
         setTrackedIcao24(tracked.id.replace("aircraft-", ""));
       } else {
         setTrackedIcao24(null);
@@ -54,8 +83,33 @@ export function AircraftPoints() {
     };
 
     viewer.trackedEntityChanged.addEventListener(handler);
+    handler();
     return () => {
       viewer.trackedEntityChanged.removeEventListener(handler);
+    };
+  }, [viewer]);
+
+  // Keep selected ICAO in sync with map/entity selection
+  useEffect(() => {
+    if (!viewer) return;
+
+    const handler = () => {
+      const selected = viewer.selectedEntity;
+      if (
+        selected?.id &&
+        typeof selected.id === "string" &&
+        selected.id.startsWith("aircraft-")
+      ) {
+        setSelectedIcao24(selected.id.replace("aircraft-", ""));
+      } else {
+        setSelectedIcao24(null);
+      }
+    };
+
+    viewer.selectedEntityChanged.addEventListener(handler);
+    handler();
+    return () => {
+      viewer.selectedEntityChanged.removeEventListener(handler);
     };
   }, [viewer]);
 
@@ -67,10 +121,7 @@ export function AircraftPoints() {
     viewer.entities.suspendEvents();
 
     // Create or update entities for each aircraft
-    for (const ac of aircraft) {
-      // Skip aircraft without valid position
-      if (ac.longitude === null || ac.latitude === null) continue;
-
+    for (const ac of renderableAircraft) {
       const id = `aircraft-${ac.icao24}`;
       currentIds.add(id);
 
@@ -203,7 +254,16 @@ export function AircraftPoints() {
     viewer.entities.resumeEvents();
 
     entityIdsRef.current = currentIds;
-  }, [viewer, aircraft, interpolation, trackedIcao24, sceneMode]);
+  }, [viewer, renderableAircraft, interpolation, trackedIcao24, sceneMode]);
 
-  return null;
+  return (
+    <AircraftSidebar
+      aircraft={renderableAircraft}
+      selectedIcao24={selectedIcao24}
+      onSelectAircraft={handleSelectAircraft}
+      status={status}
+      lastUpdate={lastUpdate}
+      isSubscribed={isSubscribed}
+    />
+  );
 }
