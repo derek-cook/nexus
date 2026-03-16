@@ -1,4 +1,4 @@
-import { Viewer, CameraFlyTo, RectangleGraphics, Entity } from "resium";
+import { Viewer, CameraFlyTo, RectangleGraphics, Entity, Clock } from "resium";
 import * as Cesium from "cesium";
 import { AircraftPoints } from "./AircraftPoints";
 
@@ -16,17 +16,20 @@ export function App() {
     <div className="relative h-screen w-screen overflow-hidden">
       <Viewer
         full
+        animation={false}
         shouldAnimate={true}
+        timeline={false}
         sceneMode={Cesium.SceneMode.SCENE2D}
       >
         <Entity>
           <RectangleGraphics
             coordinates={LAX_RECT}
-            material={Cesium.Color.WHITE.withAlpha(0.1)}
+            material={Cesium.Color.TRANSPARENT}
             outline
             outlineColor={Cesium.Color.WHITE}
             outlineWidth={3}
-            height={0}
+            height={1}
+            heightReference={Cesium.HeightReference.CLAMP_TO_GROUND}
           />
         </Entity>
         <AircraftPoints />

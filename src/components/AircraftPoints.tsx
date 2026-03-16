@@ -75,7 +75,11 @@ export function AircraftPoints() {
 
     const handler = () => {
       const tracked = viewer.trackedEntity;
-      if (tracked?.id && typeof tracked.id === "string" && tracked.id.startsWith("aircraft-")) {
+      if (
+        tracked?.id &&
+        typeof tracked.id === "string" &&
+        tracked.id.startsWith("aircraft-")
+      ) {
         setTrackedIcao24(tracked.id.replace("aircraft-", ""));
       } else {
         setTrackedIcao24(null);
@@ -160,7 +164,10 @@ export function AircraftPoints() {
           // Interpolated position for smooth camera follow
           const icao24 = ac.icao24;
           entity.position = new Cesium.CallbackPositionProperty(
-            (time: Cesium.JulianDate | undefined, result?: Cesium.Cartesian3) => {
+            (
+              time: Cesium.JulianDate | undefined,
+              result?: Cesium.Cartesian3
+            ) => {
               if (!time) return undefined;
               const pos = interpolation.getInterpolatedPosition(icao24, time);
               if (!pos) return undefined;

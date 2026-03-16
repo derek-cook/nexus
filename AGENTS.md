@@ -1,32 +1,12 @@
 # Nexus - Real-Time Aircraft Tracking
 
-A real-time aircraft tracking application that displays live aircraft positions on a 3D Cesium globe. Integrates with OpenSky Network API to fetch aircraft data and streams updates to clients via WebSocket.
+A real-time aircraft tracking application that displays live aircraft positions on a 3D globe or 2D map. It uses Cesium as the map library, with Resium as a React wrapper. Integrates with OpenSky Network API to fetch aircraft data and streams updates to clients via WebSocket.
 
 ## Quick Start
 
 ```bash
 bun install        # Install dependencies
 bun dev            # Start dev server with HMR (localhost:3000)
-```
-
-## Project Structure
-
-```
-src/
-├── server/
-│   ├── index.ts           # Main Bun.serve() entry point with WebSocket
-│   ├── aircraft.ts        # OpenSky API integration (real data)
-│   └── aircraft-mock.ts   # Mock aircraft data for testing
-├── components/
-│   ├── App.tsx            # Root React component with Cesium Viewer
-│   ├── AircraftPoints.tsx # Aircraft entity rendering
-│   └── ui/                # Shadcn-style UI components
-├── hooks/
-│   ├── useWebSocket.ts        # WebSocket client connection
-│   └── useAircraftUpdates.ts  # Aircraft data state management
-├── frontend.tsx           # React entry point
-├── index.html             # HTML template
-└── index.css              # Global styles with Tailwind
 ```
 
 ## Tech Stack
@@ -36,10 +16,14 @@ src/
 - **Server**: Bun.serve() with WebSocket support
 - **Data Source**: OpenSky Network API (OAuth2)
 
+## Docs
+
 **OpenSky Network REST API** https://openskynetwork.github.io/opensky-api/rest.html#all-state-vectors
-**Cesium API Docs**: [Cesium.js API](https://cesium.com/learn/cesiumjs/ref-doc/)
+**Cesium JS API**: [Cesium.js API](https://cesium.com/learn/cesiumjs/ref-doc/)
+**Resium Docs**: [Resium](https://resium.reearth.io/guide)
 **Flight Tracker tutorial**: [Flight tracker tutorial](https://cesium.com/learn/cesiumjs-learn/cesiumjs-flight-tracker/)
 **Cesium repo**: cloned locally at ../cesium or https://github.com/CesiumGS/cesium
+**Cesium gallery examples**: [cesium gallery](https://github.com/CesiumGS/cesium/tree/main/packages/sandcastle/gallery)
 
 ## Key Patterns
 
@@ -53,21 +37,28 @@ Clients subscribe to named channels (e.g., "aircraft"). Server broadcasts update
 OpenSky API → Server polls/caches → WebSocket broadcast → useAircraftUpdates hook → Cesium entities
 ```
 
-### Cesium Rendering
-
-Aircraft rendered as Cesium Entities with:
-
-- 3D model (`Cesium_Air.glb`) with heading orientation
-- Point graphics (yellow=airborne, gray=ground)
-- Interactive description popups
+Note: There is a 4000 credit daily limit on OpenSky, each request cost 1-4 credits depending on amount of data requested. ie, requesting aircraft within the lat/lon of a city is 1 credit, but 4 credits for the whole globe.
 
 ### Cesium/Resium Viewer Lifecycle
 
-Treat `Viewer` as an imperative root component. Avoid frequent parent-level state updates that trigger `Viewer` rerenders.
+CesiumJS is an imperative geospatial library that centers around the Viewer object. Resium provides the declarative React wrappers.
 
-- Keep live aircraft data, selection state, and viewer event subscriptions inside child components of `Viewer` (for example `src/components/AircraftPoints.tsx`).
+- Keep state inside child components of `Viewer`.
+- Use Resium components when appropriate.
 - Prefer imperative viewer updates from child components (`viewer.selectedEntity`, `viewer.trackedEntity`) over lifting this state into `src/components/App.tsx`.
 - Keep `src/components/App.tsx` mostly static and focused on composition of `Viewer` children.
+- Treat `Viewer` as an imperative root component. Try not to frequently rerender or recreate cesium elements. See cesium property updates below:
+
+#### Property Categories
+
+| Category            | Behavior                           | Example                                          |
+| ------------------- | ---------------------------------- | ------------------------------------------------ |
+| **Cesium props**    | Mutable, synced on update          | `Entity.position`, `show`                        |
+| **Read-only props** | Changing triggers destroy/recreate | `Viewer.sceneMode`, `imageryProvider`            |
+| **Cesium events**   | React-style naming                 | `trackedEntityChanged` → `onTrackedEntityChange` |
+| **Custom props**    | Resium conveniences                | `Viewer.full`                                    |
+
+Refer to `/ResiumGuide.md` or `https://resium.reearth.io/guide` as a reference for writing cesium components.
 
 ## Environment Variables
 
@@ -76,7 +67,7 @@ Copy `.env.example` to `.env` and configure:
 - `OPENSKY_CLIENT_ID` - OpenSky OAuth2 client ID
 - `OPENSKY_CLIENT_SECRET` - OpenSky OAuth2 client secret
 
-## Switching Data Sources
+## Testing with mocked data
 
 In `src/server/index.ts`, change the import to switch between real and mock data:
 

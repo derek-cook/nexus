@@ -1,5 +1,11 @@
-import { useMemo } from "react";
-import { Clock3, Plane, Radio } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  Clock3,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Plane,
+  Radio,
+} from "lucide-react";
 import type { AircraftState } from "../hooks/useAircraftUpdates";
 import type { WebSocketStatus } from "../hooks/useWebSocket";
 import { Button } from "./ui/button";
@@ -50,77 +56,102 @@ export function AircraftSidebar({
     });
   }, [lastUpdate]);
 
+  const [open, setOpen] = useState(true);
+
   return (
-    <div className="pointer-events-none absolute top-4 left-4 z-20 w-[min(22rem,calc(100vw-2rem))]">
-      <Card className="pointer-events-auto gap-0 overflow-hidden border-white/30 bg-background/85 py-0 shadow-xl backdrop-blur-md">
-        <CardHeader className="gap-3 border-b bg-linear-to-r from-slate-950/95 via-slate-900/90 to-slate-950/95 text-slate-50">
-          <div className="flex items-center justify-between gap-3">
-            <CardTitle className="flex items-center gap-2 text-sm tracking-wide uppercase">
-              <Plane className="size-4" />
-              Aircraft
-            </CardTitle>
-            <span className="rounded-full border border-slate-500/60 bg-slate-800/70 px-2 py-0.5 text-xs font-medium text-slate-100">
-              {sortedAircraft.length}
-            </span>
-          </div>
-          <CardDescription className="space-y-1 text-xs text-slate-300">
-            <div className="flex items-center gap-2">
-              <Radio className="size-3.5" />
-              <span className="flex items-center gap-1.5">
-                <span
-                  className={cn(
-                    "size-2 rounded-full",
-                    STATUS_DOT_STYLE[status]
-                  )}
-                />
-                {status}
-                {isSubscribed ? " / subscribed" : " / unsubscribed"}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock3 className="size-3.5" />
-              <span>{lastUpdateLabel}</span>
-            </div>
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent className="p-0">
-          <div className="max-h-[calc(100vh-11rem)] space-y-1 overflow-y-auto p-2">
-            {sortedAircraft.length === 0 ? (
-              <div className="rounded-lg border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
-                No aircraft entities available.
-              </div>
-            ) : (
-              sortedAircraft.map((aircraftItem) => {
-                const isSelected = selectedIcao24 === aircraftItem.icao24;
-
-                return (
+    <div className="pointer-events-none absolute top-4 left-4 z-20">
+      {open ? (
+        <div className="w-[min(22rem,calc(100vw-2rem))]">
+          <Card className="pointer-events-auto gap-0 overflow-hidden border-white/30 bg-background/85 py-0 shadow-xl backdrop-blur-md">
+            <CardHeader className="gap-3 pt-2 border-b bg-linear-to-r from-slate-950/95 via-slate-900/90 to-slate-950/95 text-slate-50">
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle className="flex items-center gap-2 text-sm tracking-wide uppercase">
+                  <Plane className="size-4" />
+                  Aircraft
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full border border-slate-500/60 bg-slate-800/70 px-2 py-0.5 text-xs font-medium text-slate-100">
+                    {sortedAircraft.length}
+                  </span>
                   <Button
-                    key={aircraftItem.icao24}
                     variant="ghost"
-                    className={cn(
-                      "h-auto w-full items-start justify-start rounded-lg border border-transparent px-3 py-2 text-left",
-                      "hover:border-sky-300/60 hover:bg-sky-50/80",
-                      isSelected &&
-                        "border-sky-300 bg-sky-100/80 text-sky-950 hover:bg-sky-100/90"
-                    )}
-                    onClick={() => onSelectAircraft(aircraftItem.icao24)}
+                    size="icon"
+                    className="size-7 text-slate-300 hover:bg-slate-700/60 hover:text-slate-50"
+                    onClick={() => setOpen(false)}
                   >
-                    <div className="flex w-full items-center justify-between gap-3">
-                      <span className="font-mono text-xs tracking-wide uppercase">
-                        {aircraftItem.icao24}
-                      </span>
-                      <span className="rounded-md border bg-background/80 px-2 py-0.5 font-mono text-[11px]">
-                        {aircraftItem.iconType}
-                      </span>
-                    </div>
+                    <PanelLeftClose className="size-4" />
                   </Button>
-                );
-              })
-            )}
-          </div>
-        </CardContent>
-      </Card>
+                </div>
+              </div>
+              <CardDescription className="space-y-1 text-xs text-slate-300">
+                <div className="flex items-center gap-2">
+                  <Radio className="size-3.5" />
+                  <span className="flex items-center gap-1.5">
+                    <span
+                      className={cn(
+                        "size-2 rounded-full",
+                        STATUS_DOT_STYLE[status]
+                      )}
+                    />
+                    {status}
+                    {isSubscribed ? " / subscribed" : " / unsubscribed"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock3 className="size-3.5" />
+                  <span>{lastUpdateLabel}</span>
+                </div>
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="p-0">
+              <div className="max-h-[calc(100vh-11rem)] space-y-1 overflow-y-auto p-2">
+                {sortedAircraft.length === 0 ? (
+                  <div className="rounded-lg border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
+                    No aircraft entities available.
+                  </div>
+                ) : (
+                  sortedAircraft.map((aircraftItem) => {
+                    const isSelected = selectedIcao24 === aircraftItem.icao24;
+
+                    return (
+                      <Button
+                        key={aircraftItem.icao24}
+                        variant="ghost"
+                        className={cn(
+                          "h-auto w-full items-start justify-start rounded-lg border border-transparent px-3 py-2 text-left",
+                          "hover:border-sky-300/60 hover:bg-sky-50/80",
+                          isSelected &&
+                            "border-sky-300 bg-sky-100/80 text-sky-950 hover:bg-sky-100/90"
+                        )}
+                        onClick={() => onSelectAircraft(aircraftItem.icao24)}
+                      >
+                        <div className="flex w-full items-center justify-between gap-3">
+                          <span className="font-mono text-xs tracking-wide uppercase">
+                            {aircraftItem.icao24}
+                          </span>
+                          <span className="rounded-md border bg-background/80 px-2 py-0.5 font-mono text-[11px]">
+                            {aircraftItem.iconType}
+                          </span>
+                        </div>
+                      </Button>
+                    );
+                  })
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="pointer-events-auto size-9 border border-white/30 bg-background/85 shadow-xl backdrop-blur-md hover:bg-background/95"
+          onClick={() => setOpen(true)}
+        >
+          <PanelLeftOpen className="size-4" />
+        </Button>
+      )}
     </div>
   );
 }
