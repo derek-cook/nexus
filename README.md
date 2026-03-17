@@ -1,4 +1,4 @@
-You need (OpenSkyNetwork)[https://opensky-network.org/] credentials. Create and account and request credentials (Account > Request Data Access).
+You need [OpenSkyNetwork](https://opensky-network.org/) credentials. Create and account and request credentials (Account > Request Data Access).
 Create env file
 ```bash
 cp .env.example .env
