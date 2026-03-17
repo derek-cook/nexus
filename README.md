@@ -19,9 +19,11 @@ https://github.com/user-attachments/assets/cbc6f5aa-867a-4a02-a0f1-b99ae5947f64
 - **Aircraft Metadata** — Enriches raw ICAO24 codes with aircraft type data from a local database derived from the OpenSky aircraft database.
 - **Status Indicators** — Connection state, aircraft count, and last-update timestamp displayed in the sidebar.
 
-## Setup
+## Running locally
 
-You need [OpenSkyNetwork](https://opensky-network.org/) credentials. Create an account and request credentials (Account > Request Data Access).
+Note: OpenSky only allows 4000 credits per day, so I'll need to explore other data sources or add more limits. Until then, this won't be deployed.
+
+You can use your own [OpenSkyNetwork](https://opensky-network.org/) credentials and run locally. Create an account and request credentials (Account > Request Data Access).
 
 Create env file:
 
