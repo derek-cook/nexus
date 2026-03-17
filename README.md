@@ -2,6 +2,14 @@
 
 Real-time aircraft tracking on a 3D globe. Nexus streams live aircraft positions from the OpenSky Network and renders them on an interactive Cesium map with smooth interpolated movement.
 
+
+### 2D View
+https://github.com/user-attachments/assets/66e87dfe-d72e-4d46-8f74-aa5c513f5c78
+
+### 3D View
+https://github.com/user-attachments/assets/cbc6f5aa-867a-4a02-a0f1-b99ae5947f64
+
+
 ## Features
 
 - **Live Aircraft Tracking** — Streams real-time aircraft positions via WebSocket with 10-second polling from the OpenSky Network API (OpenSky limits to 4000 credits per day)
