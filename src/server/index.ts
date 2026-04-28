@@ -1,63 +1,164 @@
 import { serve, type Server, type ServerWebSocket } from "bun";
 import index from "../index.html";
-import { fetchAircraftData, LA_BOUNDS } from "./aircraft";
 import { initAircraftDb } from "./aircraft-db";
-// import { fetchAircraftData, LA_BOUNDS } from "./aircraft-mock";
+import {
+  GLOBAL_CHANNEL,
+  REGION_CHANNEL_PREFIX,
+  TRACK_CHANNEL_PREFIX,
+  acquireGlobal,
+  acquireRegion,
+  acquireTrack,
+  getCachedGlobal,
+  getCachedRegion,
+  getCachedTrack,
+  releaseGlobal,
+  releaseRegion,
+  releaseTrack,
+  setBroadcaster,
+} from "./aircraft-service";
+import type { FlightCircle } from "./providers";
 
-// Type for WebSocket data attached to each connection
 interface WebSocketData {
   id: string;
   connectedAt: number;
   channels: Set<string>;
 }
 
-// Track all connected WebSocket clients
-const clients = new Set<ServerWebSocket<WebSocketData>>();
+const channelSubscribers = new Map<
+  string,
+  Set<ServerWebSocket<WebSocketData>>
+>();
 
-// Broadcast message to all clients subscribed to a channel
 function broadcastToChannel(channel: string, message: object) {
+  const subs = channelSubscribers.get(channel);
+  if (!subs || subs.size === 0) return;
   const payload = JSON.stringify({ channel, ...message });
-  let clientCount = 0;
-  for (const client of clients) {
-    if (client.data.channels.has(channel)) {
-      client.send(payload);
-      clientCount++;
-    }
-  }
-  console.log(`Broadcasted to ${clientCount} clients on channel ${channel}`);
+  for (const ws of subs) ws.send(payload);
 }
 
-function hasSubscribers(channel: string) {
-  for (const client of clients) {
-    if (client.data.channels.has(channel)) return true;
+function addToChannel(
+  ws: ServerWebSocket<WebSocketData>,
+  channel: string
+): boolean {
+  if (ws.data.channels.has(channel)) return false;
+  ws.data.channels.add(channel);
+  let subs = channelSubscribers.get(channel);
+  if (!subs) {
+    subs = new Set();
+    channelSubscribers.set(channel, subs);
   }
-  return false;
+  subs.add(ws);
+  return true;
 }
 
-// Poll OpenSky API and broadcast to aircraft channel subscribers
-async function pollAircraftUpdates() {
-  if (!hasSubscribers("aircraft")) return;
+function removeFromChannel(
+  ws: ServerWebSocket<WebSocketData>,
+  channel: string
+): boolean {
+  if (!ws.data.channels.has(channel)) return false;
+  ws.data.channels.delete(channel);
+  const subs = channelSubscribers.get(channel);
+  if (subs) {
+    subs.delete(ws);
+    if (subs.size === 0) channelSubscribers.delete(channel);
+  }
+  return true;
+}
 
-  const aircraft = await fetchAircraftData(LA_BOUNDS);
+function trackIcaoFromChannel(channel: string): string | null {
+  if (!channel.startsWith(TRACK_CHANNEL_PREFIX)) return null;
+  const icao = channel.slice(TRACK_CHANNEL_PREFIX.length);
+  return /^[0-9a-f]{6}$/i.test(icao) ? icao.toLowerCase() : null;
+}
 
-  if (aircraft.length > 0) {
-    broadcastToChannel("aircraft", {
+function regionKeyFromChannel(channel: string): string | null {
+  if (!channel.startsWith(REGION_CHANNEL_PREFIX)) return null;
+  const key = channel.slice(REGION_CHANNEL_PREFIX.length);
+  return key.length > 0 ? key : null;
+}
+
+function isValidCircle(c: unknown): c is FlightCircle {
+  if (!c || typeof c !== "object") return false;
+  const obj = c as Record<string, unknown>;
+  return (
+    typeof obj.lat === "number" &&
+    typeof obj.lon === "number" &&
+    typeof obj.radiusNm === "number" &&
+    Number.isFinite(obj.lat) &&
+    Number.isFinite(obj.lon) &&
+    Number.isFinite(obj.radiusNm) &&
+    obj.radiusNm > 0
+  );
+}
+
+function acquireChannel(channel: string, circle?: FlightCircle | null): void {
+  if (channel === GLOBAL_CHANNEL) {
+    acquireGlobal();
+    return;
+  }
+  const icao = trackIcaoFromChannel(channel);
+  if (icao) {
+    acquireTrack(icao);
+    return;
+  }
+  const regionKey = regionKeyFromChannel(channel);
+  if (regionKey && circle) acquireRegion(regionKey, circle);
+}
+
+function releaseChannel(channel: string): void {
+  if (channel === GLOBAL_CHANNEL) {
+    releaseGlobal();
+    return;
+  }
+  const icao = trackIcaoFromChannel(channel);
+  if (icao) {
+    releaseTrack(icao);
+    return;
+  }
+  const regionKey = regionKeyFromChannel(channel);
+  if (regionKey) releaseRegion(regionKey);
+}
+
+function buildInitialPayload(channel: string): object | null {
+  if (channel === GLOBAL_CHANNEL) {
+    const cached = getCachedGlobal();
+    if (!cached) return null;
+    return {
       type: "aircraft-update",
-      timestamp: Date.now(),
-      count: aircraft.length,
-      aircraft,
-    });
+      timestamp: cached.timestamp,
+      count: cached.aircraft.length,
+      aircraft: cached.aircraft,
+    };
   }
+  const icao = trackIcaoFromChannel(channel);
+  if (icao) {
+    const cached = getCachedTrack(icao);
+    if (!cached) return null;
+    return {
+      type: "track-update",
+      timestamp: cached.timestamp,
+      aircraft: cached.aircraft,
+    };
+  }
+  const regionKey = regionKeyFromChannel(channel);
+  if (regionKey) {
+    const cached = getCachedRegion(regionKey);
+    if (!cached) return null;
+    return {
+      type: "region-update",
+      timestamp: cached.timestamp,
+      count: cached.aircraft.length,
+      aircraft: cached.aircraft,
+    };
+  }
+  return null;
 }
 
-// Load aircraft metadata database, then start polling
+setBroadcaster(broadcastToChannel);
+
 initAircraftDb().catch((err) =>
   console.warn("Aircraft DB init failed (continuing without it):", err)
 );
-
-const POLL_INTERVAL_MS = 10_000;
-setInterval(pollAircraftUpdates, POLL_INTERVAL_MS);
-console.log(`Aircraft polling started (every ${POLL_INTERVAL_MS / 1000}s)`);
 
 const server = serve<WebSocketData>({
   routes: {
@@ -126,7 +227,6 @@ const server = serve<WebSocketData>({
   websocket: {
     open(ws: ServerWebSocket<WebSocketData>) {
       console.log(`server WebSocket connected: ${ws.data.id}`);
-      clients.add(ws);
       ws.send(JSON.stringify({ type: "connected", id: ws.data.id }));
     },
 
@@ -136,56 +236,46 @@ const server = serve<WebSocketData>({
       try {
         const msg = JSON.parse(text);
 
-        // Handle channel subscriptions
-        if (msg.type === "subscribe" && msg.channel) {
-          ws.data.channels.add(msg.channel);
-          ws.send(
-            JSON.stringify({
-              type: "subscribed",
-              channel: msg.channel,
-            })
-          );
-          console.log(`Client ${ws.data.id} subscribed to ${msg.channel}`);
+        if (msg.type === "subscribe" && typeof msg.channel === "string") {
+          const channel = msg.channel;
+          const regionKey = regionKeyFromChannel(channel);
+          let circle: FlightCircle | null = null;
+          if (regionKey) {
+            if (!isValidCircle(msg.circle)) {
+              ws.send(
+                JSON.stringify({
+                  type: "error",
+                  error: "subscribe to aircraft:region:<key> requires valid circle",
+                })
+              );
+              return;
+            }
+            circle = msg.circle;
+          }
+          const added = addToChannel(ws, channel);
+          if (added) acquireChannel(channel, circle);
+          ws.send(JSON.stringify({ type: "subscribed", channel }));
+          console.log(`Client ${ws.data.id} subscribed to ${channel}`);
 
-          // Immediately send aircraft data when subscribing to aircraft channel
-          if (msg.channel === "aircraft") {
-            fetchAircraftData(LA_BOUNDS).then((aircraft) => {
-              if (aircraft.length > 0) {
-                ws.send(
-                  JSON.stringify({
-                    channel: "aircraft",
-                    type: "aircraft-update",
-                    timestamp: Date.now(),
-                    count: aircraft.length,
-                    aircraft,
-                  })
-                );
-                console.log(
-                  `Sent initial ${aircraft.length} aircraft to client ${ws.data.id}`
-                );
-              }
-            });
+          const initial = buildInitialPayload(channel);
+          if (initial) {
+            ws.send(JSON.stringify({ channel, ...initial }));
           }
           return;
         }
 
-        if (msg.type === "unsubscribe" && msg.channel) {
-          ws.data.channels.delete(msg.channel);
-          ws.send(
-            JSON.stringify({
-              type: "unsubscribed",
-              channel: msg.channel,
-            })
-          );
-          console.log(`Client ${ws.data.id} unsubscribed from ${msg.channel}`);
+        if (msg.type === "unsubscribe" && typeof msg.channel === "string") {
+          const channel = msg.channel;
+          const removed = removeFromChannel(ws, channel);
+          if (removed) releaseChannel(channel);
+          ws.send(JSON.stringify({ type: "unsubscribed", channel }));
+          console.log(`Client ${ws.data.id} unsubscribed from ${channel}`);
           return;
         }
       } catch {
-        // Not JSON, treat as regular message
         console.log(`Received non-JSON message: ${text}`);
       }
 
-      // Echo other messages back
       ws.send(
         JSON.stringify({
           type: "message",
@@ -197,7 +287,11 @@ const server = serve<WebSocketData>({
     },
 
     close(ws: ServerWebSocket<WebSocketData>, code: number, reason: string) {
-      clients.delete(ws);
+      // Tear down every channel this client was subscribed to so ref-counted
+      // pollers don't leak when clients disconnect without unsubscribing.
+      for (const channel of Array.from(ws.data.channels)) {
+        if (removeFromChannel(ws, channel)) releaseChannel(channel);
+      }
       console.log(
         `server WebSocket closed: ${ws.data.id} (code: ${code}, reason: ${reason})`
       );
