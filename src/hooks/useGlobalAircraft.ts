@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useWebSocket } from "./useWebSocket";
 
 export interface AircraftState {
@@ -21,30 +21,27 @@ export interface AircraftState {
 }
 
 interface AircraftUpdateMessage {
-  channel: "aircraft";
+  channel: "aircraft:global";
   type: "aircraft-update";
   timestamp: number;
   count: number;
   aircraft: AircraftState[];
 }
 
-export function useAircraftUpdates() {
+export function useGlobalAircraft() {
   const ws = useWebSocket();
   const [aircraft, setAircraft] = useState<AircraftState[]>([]);
   const [lastUpdate, setLastUpdate] = useState<number | null>(null);
 
-  // Handle messages and subscribe when connected
   useEffect(() => {
     const unsubscribe = ws.addMessageListener((msg) => {
-      // Subscribe to aircraft channel when we receive the connected message
       if (msg.type === "connected") {
-        ws.subscribe("aircraft");
+        ws.subscribe("aircraft:global");
       }
 
-      // Handle aircraft updates
       const aircraftMsg = msg as AircraftUpdateMessage;
       if (
-        aircraftMsg?.channel === "aircraft" &&
+        aircraftMsg?.channel === "aircraft:global" &&
         aircraftMsg?.type === "aircraft-update"
       ) {
         setAircraft(aircraftMsg.aircraft);
@@ -62,6 +59,6 @@ export function useAircraftUpdates() {
     lastUpdate,
     count: aircraft.length,
     status: ws.status,
-    isSubscribed: ws.subscribedChannels.has("aircraft"),
+    isSubscribed: ws.subscribedChannels.has("aircraft:global"),
   };
 }
