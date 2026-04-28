@@ -1,29 +1,53 @@
-/**
- * Bridge hook connecting WebSocket aircraft data to the interpolation service.
- * Updates baselines when new fixes arrive and exposes the interpolation service.
- */
-
-import { useEffect } from "react";
-import { useAircraftUpdates } from "./useAircraftUpdates";
+import { useEffect, useMemo } from "react";
+import { useGlobalAircraft, type AircraftState } from "./useGlobalAircraft";
+import { useRegionalAircraft } from "./useRegionalAircraft";
 import { aircraftInterpolation } from "../lib/aircraftInterpolation";
+import type { RegionBounds } from "../region-key";
 
-export function useInterpolatedAircraft() {
-  const { aircraft, lastUpdate, count, status, isSubscribed } =
-    useAircraftUpdates();
+interface Options {
+  regionalBounds: RegionBounds | null;
+  regionalEnabled: boolean;
+}
 
-  // Update interpolation baselines when new data arrives
-  useEffect(() => {
-    if (aircraft.length > 0 && lastUpdate !== null) {
-      aircraftInterpolation.updateFromFix(aircraft, lastUpdate);
+// Bridges WebSocket data into the interpolation service. Merges global +
+// regional aircraft (regional wins on collisions because it polls 40x faster),
+// then feeds the merged set into the interpolation baselines.
+export function useInterpolatedAircraft({
+  regionalBounds,
+  regionalEnabled,
+}: Options) {
+  const global = useGlobalAircraft();
+  const regional = useRegionalAircraft(regionalBounds, regionalEnabled);
+
+  const merged = useMemo<AircraftState[]>(() => {
+    const byIcao = new Map<string, AircraftState>();
+    for (const ac of global.aircraft) byIcao.set(ac.icao24, ac);
+    for (const ac of regional.aircraft) byIcao.set(ac.icao24, ac);
+    return Array.from(byIcao.values());
+  }, [global.aircraft, regional.aircraft]);
+
+  const lastUpdate = useMemo(() => {
+    if (regional.lastUpdate && global.lastUpdate) {
+      return Math.max(regional.lastUpdate, global.lastUpdate);
     }
-  }, [aircraft, lastUpdate]);
+    return regional.lastUpdate ?? global.lastUpdate;
+  }, [global.lastUpdate, regional.lastUpdate]);
+
+  useEffect(() => {
+    if (merged.length > 0 && lastUpdate !== null) {
+      aircraftInterpolation.updateFromFix(merged, lastUpdate);
+    }
+  }, [merged, lastUpdate]);
 
   return {
-    aircraft,
+    aircraft: merged,
+    globalAircraft: global.aircraft,
+    regionalAircraft: regional.aircraft,
     lastUpdate,
-    count,
-    status,
-    isSubscribed,
+    count: merged.length,
+    status: global.status,
+    isSubscribed: global.isSubscribed,
+    regionalChannel: regional.currentChannel,
     interpolation: aircraftInterpolation,
   };
 }

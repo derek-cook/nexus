@@ -6,7 +6,7 @@ import {
   Plane,
   Radio,
 } from "lucide-react";
-import type { AircraftState } from "../hooks/useAircraftUpdates";
+import type { AircraftState } from "../hooks/useGlobalAircraft";
 import type { WebSocketStatus } from "../hooks/useWebSocket";
 import { Button } from "./ui/button";
 import {

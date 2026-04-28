@@ -5,7 +5,7 @@
  */
 
 import * as Cesium from "cesium";
-import type { AircraftState } from "../hooks/useAircraftUpdates";
+import type { AircraftState } from "../hooks/useGlobalAircraft";
 import { projectPosition, type GeoPosition } from "./geoMath";
 
 /** Baseline state captured from an API fix */

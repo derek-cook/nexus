@@ -3,7 +3,8 @@ import { useCesium } from "resium";
 import * as Cesium from "cesium";
 import { getAircraftIconUrl } from "../lib/aircraftIcons";
 import { useInterpolatedAircraft } from "../hooks/useInterpolatedAircraft";
-import type { AircraftState } from "../hooks/useAircraftUpdates";
+import { useViewportBounds } from "../hooks/useViewportBounds";
+import type { AircraftState } from "../hooks/useGlobalAircraft";
 import { AircraftSidebar } from "./AircraftSidebar";
 
 type AircraftWithPosition = AircraftState & {
@@ -12,9 +13,19 @@ type AircraftWithPosition = AircraftState & {
 };
 
 export function AircraftPoints() {
-  const { aircraft, interpolation, status, lastUpdate, isSubscribed } =
-    useInterpolatedAircraft();
   const { viewer } = useCesium();
+  const { bounds, regionalEnabled } = useViewportBounds(viewer);
+  const {
+    aircraft,
+    globalAircraft,
+    interpolation,
+    status,
+    lastUpdate,
+    isSubscribed,
+  } = useInterpolatedAircraft({
+    regionalBounds: bounds,
+    regionalEnabled,
+  });
 
   const renderableAircraft = useMemo(
     () =>
@@ -263,9 +274,21 @@ export function AircraftPoints() {
     entityIdsRef.current = currentIds;
   }, [viewer, renderableAircraft, interpolation, trackedIcao24, sceneMode]);
 
+  // Sidebar shows the global snapshot only — stable list of all tracked
+  // aircraft worldwide for search/sort/filter. Regional updates layer onto
+  // the globe markers but don't churn the sidebar list.
+  const sidebarAircraft = useMemo(
+    () =>
+      globalAircraft.filter(
+        (ac): ac is AircraftWithPosition =>
+          ac.longitude !== null && ac.latitude !== null
+      ),
+    [globalAircraft]
+  );
+
   return (
     <AircraftSidebar
-      aircraft={renderableAircraft}
+      aircraft={sidebarAircraft}
       selectedIcao24={selectedIcao24}
       onSelectAircraft={handleSelectAircraft}
       status={status}
