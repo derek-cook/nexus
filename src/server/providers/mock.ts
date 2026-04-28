@@ -1,19 +1,28 @@
-import type { OpenSkyState, AircraftBounds } from "./aircraft";
+import type {
+  AircraftSnapshot,
+  FlightBounds,
+  FlightCircle,
+  FlightDataProvider,
+} from "./types";
 
-// Re-export the types and bounds from the real module
-export { LA_BOUNDS, type OpenSkyState, type AircraftBounds } from "./aircraft";
+const MOCK_BOUNDS: FlightBounds = {
+  lamin: 33.5,
+  lamax: 34.4,
+  lomin: -119.7,
+  lomax: -117.4,
+};
 
-// Generate mock aircraft within bounds that move over time
-function generateMockAircraft(bounds: AircraftBounds): OpenSkyState[] {
+function generateMockAircraft(bounds: FlightBounds): AircraftSnapshot[] {
   const now = Date.now();
+  const nowSeconds = Math.floor(now / 1000);
 
-  const mockAircraft: OpenSkyState[] = [
+  return [
     {
       icao24: "a1b2c3",
       callsign: "UAL123",
       originCountry: "United States",
-      timePosition: now,
-      lastContact: now,
+      timePosition: nowSeconds,
+      lastContact: nowSeconds,
       longitude: bounds.lomin + 0.5 + Math.sin(now / 60000) * 0.3,
       latitude: bounds.lamin + 0.3 + Math.cos(now / 60000) * 0.2,
       baroAltitude: 10000,
@@ -33,8 +42,8 @@ function generateMockAircraft(bounds: AircraftBounds): OpenSkyState[] {
       icao24: "d4e5f6",
       callsign: "DAL456",
       originCountry: "United States",
-      timePosition: now,
-      lastContact: now,
+      timePosition: nowSeconds,
+      lastContact: nowSeconds,
       longitude: bounds.lomin + 1.2 + Math.cos(now / 50000) * 0.4,
       latitude: bounds.lamin + 0.6 + Math.sin(now / 50000) * 0.3,
       baroAltitude: 8500,
@@ -54,8 +63,8 @@ function generateMockAircraft(bounds: AircraftBounds): OpenSkyState[] {
       icao24: "g7h8i9",
       callsign: "SWA789",
       originCountry: "United States",
-      timePosition: now,
-      lastContact: now,
+      timePosition: nowSeconds,
+      lastContact: nowSeconds,
       longitude: bounds.lomin + 0.8 + Math.sin(now / 70000) * 0.5,
       latitude: bounds.lamin + 0.5 + Math.cos(now / 70000) * 0.4,
       baroAltitude: 12000,
@@ -75,8 +84,8 @@ function generateMockAircraft(bounds: AircraftBounds): OpenSkyState[] {
       icao24: "j1k2l3",
       callsign: "AAL321",
       originCountry: "United States",
-      timePosition: now,
-      lastContact: now,
+      timePosition: nowSeconds,
+      lastContact: nowSeconds,
       longitude: bounds.lomin + 1.5 + Math.cos(now / 45000) * 0.3,
       latitude: bounds.lamin + 0.7 + Math.sin(now / 45000) * 0.25,
       baroAltitude: 6000,
@@ -96,8 +105,8 @@ function generateMockAircraft(bounds: AircraftBounds): OpenSkyState[] {
       icao24: "m4n5o6",
       callsign: "N12345",
       originCountry: "United States",
-      timePosition: now,
-      lastContact: now,
+      timePosition: nowSeconds,
+      lastContact: nowSeconds,
       longitude: bounds.lomin + 0.6 + Math.sin(now / 90000) * 0.2,
       latitude: bounds.lamin + 0.4 + Math.cos(now / 90000) * 0.15,
       baroAltitude: 3500,
@@ -114,20 +123,27 @@ function generateMockAircraft(bounds: AircraftBounds): OpenSkyState[] {
       iconType: "light",
     },
   ];
-
-  return mockAircraft;
 }
 
-// Mock version of fetchAircraftData - returns simulated aircraft
-export async function fetchAircraftData(
-  bounds?: AircraftBounds
-): Promise<OpenSkyState[]> {
-  // Simulate network delay
+async function simulateLatency(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 100));
-
-  const { LA_BOUNDS } = await import("./aircraft");
-  const effectiveBounds = bounds ?? LA_BOUNDS;
-
-  console.log("[MOCK] Returning mock aircraft data");
-  return generateMockAircraft(effectiveBounds);
 }
+
+export const mockProvider: FlightDataProvider = {
+  name: "mock",
+  async fetchGlobal() {
+    await simulateLatency();
+    console.log("[MOCK] fetchGlobal");
+    return generateMockAircraft(MOCK_BOUNDS);
+  },
+  async fetchCircle(_circle: FlightCircle) {
+    await simulateLatency();
+    console.log("[MOCK] fetchCircle");
+    return generateMockAircraft(MOCK_BOUNDS);
+  },
+  async fetchByIcao(icao24: string) {
+    await simulateLatency();
+    const all = generateMockAircraft(MOCK_BOUNDS);
+    return all.find((a) => a.icao24 === icao24) ?? null;
+  },
+};
