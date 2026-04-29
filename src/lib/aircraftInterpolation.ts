@@ -42,7 +42,6 @@ class AircraftInterpolationService {
   updateFromFix(aircraft: AircraftState[], fixTime: number = Date.now()): void {
     // Track which aircraft are in this update
     const currentIds = new Set<string>();
-
     for (const ac of aircraft) {
       // Skip aircraft without valid position
       if (ac.latitude === null || ac.longitude === null) continue;

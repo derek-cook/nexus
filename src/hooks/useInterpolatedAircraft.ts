@@ -2,10 +2,10 @@ import { useEffect, useMemo } from "react";
 import { useGlobalAircraft, type AircraftState } from "./useGlobalAircraft";
 import { useRegionalAircraft } from "./useRegionalAircraft";
 import { aircraftInterpolation } from "../lib/aircraftInterpolation";
-import type { RegionBounds } from "../region-key";
+import type { RegionCenter } from "../region-key";
 
 interface Options {
-  regionalBounds: RegionBounds | null;
+  regionalCenter: RegionCenter | null;
   regionalEnabled: boolean;
 }
 
@@ -13,11 +13,11 @@ interface Options {
 // regional aircraft (regional wins on collisions because it polls 40x faster),
 // then feeds the merged set into the interpolation baselines.
 export function useInterpolatedAircraft({
-  regionalBounds,
+  regionalCenter,
   regionalEnabled,
 }: Options) {
   const global = useGlobalAircraft();
-  const regional = useRegionalAircraft(regionalBounds, regionalEnabled);
+  const regional = useRegionalAircraft(regionalCenter, regionalEnabled);
 
   const merged = useMemo<AircraftState[]>(() => {
     const byIcao = new Map<string, AircraftState>();

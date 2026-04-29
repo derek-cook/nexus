@@ -1,34 +1,29 @@
 import { useEffect, useState } from "react";
 import * as Cesium from "cesium";
-import type { RegionBounds } from "../region-key";
+import type { RegionCenter } from "../region-key";
 
-// Camera heights below this threshold trigger regional polling. Above it,
-// the viewport is too wide for the regional layer to be useful and the
-// global poll alone covers it.
-const REGIONAL_HEIGHT_THRESHOLD_M = 1_500_000;
+// Reads the camera's own lat/lon (positionCartographic) — the point on the
+// surface directly under the camera, independent of pitch/yaw. Works in 2D
+// and 3D and avoids the computeViewRectangle quirks that return undefined
+// after a flyTo.
+function readCameraCenter(viewer: Cesium.Viewer): RegionCenter | null {
+  const carto = viewer.camera.positionCartographic;
+  if (!carto) return null;
+  const lat = Cesium.Math.toDegrees(carto.latitude);
+  const lon = Cesium.Math.toDegrees(carto.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  return { lat, lon };
+}
 
 export function useViewportBounds(viewer: Cesium.Viewer | undefined) {
-  const [bounds, setBounds] = useState<RegionBounds | null>(null);
-  const [height, setHeight] = useState<number | null>(null);
+  const [center, setCenter] = useState<RegionCenter | null>(null);
 
   useEffect(() => {
     if (!viewer) return;
 
     const update = () => {
       try {
-        const rect = viewer.camera.computeViewRectangle();
-        if (rect) {
-          setBounds({
-            lamin: Cesium.Math.toDegrees(rect.south),
-            lamax: Cesium.Math.toDegrees(rect.north),
-            lomin: Cesium.Math.toDegrees(rect.west),
-            lomax: Cesium.Math.toDegrees(rect.east),
-          });
-        } else {
-          setBounds(null);
-        }
-        const positionCarto = viewer.camera.positionCartographic;
-        setHeight(positionCarto ? positionCarto.height : null);
+        setCenter(readCameraCenter(viewer));
       } catch {
         // Camera state is invalid during scene mode morphs; ignore.
       }
@@ -42,8 +37,5 @@ export function useViewportBounds(viewer: Cesium.Viewer | undefined) {
     };
   }, [viewer]);
 
-  const regionalEnabled =
-    height !== null && height <= REGIONAL_HEIGHT_THRESHOLD_M;
-
-  return { bounds, height, regionalEnabled };
+  return { center, regionalEnabled: center !== null };
 }

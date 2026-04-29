@@ -1,10 +1,8 @@
 // Shared by client and server. Pure logic.
 
-export interface RegionBounds {
-  lamin: number;
-  lamax: number;
-  lomin: number;
-  lomax: number;
+export interface RegionCenter {
+  lat: number;
+  lon: number;
 }
 
 export interface RegionCircle {
@@ -16,68 +14,34 @@ export interface RegionCircle {
 export interface RegionSnap {
   key: string;
   circle: RegionCircle;
-  channel: string; // canonical aircraft:region:<key>
+  channel: string;
 }
 
-export type RegionSnapResult = RegionSnap | { tooLarge: true };
-
-const FINE_GRID_DEG = 0.25;
-const COARSE_GRID_DEG = 1.0;
-const FINE_MAX_DIM_DEG = 4.0;
-const COARSE_MAX_DIM_DEG = 30.0;
-
-const KM_PER_DEG_LAT = 111.0;
-const NM_PER_KM = 0.539957;
+const GRID_DEG = 0.5;
 const ADSBLOL_MAX_RADIUS_NM = 250;
 
 export const REGION_CHANNEL_PREFIX = "aircraft:region:";
+export const DEFAULT_REGION_RADIUS_NM = 100;
 
-export function snapBounds(bounds: RegionBounds): RegionSnapResult {
-  const { lamin, lamax, lomin, lomax } = bounds;
-  const width = lomax - lomin;
-  const height = lamax - lamin;
-  const maxDim = Math.max(Math.abs(width), Math.abs(height));
-
-  let grid: number;
-  if (maxDim < FINE_MAX_DIM_DEG) grid = FINE_GRID_DEG;
-  else if (maxDim < COARSE_MAX_DIM_DEG) grid = COARSE_GRID_DEG;
-  else return { tooLarge: true };
-
-  const sLamin = Math.floor(lamin / grid) * grid;
-  const sLamax = Math.ceil(lamax / grid) * grid;
-  const sLomin = Math.floor(lomin / grid) * grid;
-  const sLomax = Math.ceil(lomax / grid) * grid;
-
-  const cellsW = Math.max(1, Math.round((sLomax - sLomin) / grid));
-  const cellsH = Math.max(1, Math.round((sLamax - sLamin) / grid));
-
-  const lat = (sLamin + sLamax) / 2;
-  const lon = (sLomin + sLomax) / 2;
-
-  const latKm = (sLamax - sLamin) * KM_PER_DEG_LAT;
-  const lonKm =
-    (sLomax - sLomin) * KM_PER_DEG_LAT * Math.cos((lat * Math.PI) / 180);
-  const halfDiagKm = Math.sqrt(latKm * latKm + lonKm * lonKm) / 2;
-  const radiusNm = Math.min(
-    ADSBLOL_MAX_RADIUS_NM,
-    halfDiagKm * NM_PER_KM * 1.1
-  );
-
-  const key = `${grid}:${sLamin.toFixed(2)}:${sLomin.toFixed(2)}:${cellsW}x${cellsH}`;
+// Snaps a camera-target lat/lon to a 0.5° grid so neighbours share a poller.
+// Two clients within ~55 km (one cell) hit the same channel.
+export function snapCenter(
+  center: RegionCenter,
+  radiusNm: number = DEFAULT_REGION_RADIUS_NM
+): RegionSnap {
+  const lat = Math.round(center.lat / GRID_DEG) * GRID_DEG;
+  const lon = Math.round(center.lon / GRID_DEG) * GRID_DEG;
+  const radius = Math.min(ADSBLOL_MAX_RADIUS_NM, Math.max(1, radiusNm));
+  const key = `${GRID_DEG}:${lat.toFixed(2)}:${lon.toFixed(2)}:${radius}`;
   return {
     key,
-    circle: { lat, lon, radiusNm },
+    circle: { lat, lon, radiusNm: radius },
     channel: `${REGION_CHANNEL_PREFIX}${key}`,
   };
 }
 
 export function regionKeyFromChannel(channel: string): string | null {
   if (!channel.startsWith(REGION_CHANNEL_PREFIX)) return null;
-  return channel.slice(REGION_CHANNEL_PREFIX.length);
-}
-
-export function isRegionTooLarge(
-  result: RegionSnapResult
-): result is { tooLarge: true } {
-  return (result as { tooLarge?: boolean }).tooLarge === true;
+  const key = channel.slice(REGION_CHANNEL_PREFIX.length);
+  return key.length > 0 ? key : null;
 }

@@ -1,11 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useWebSocket } from "./useWebSocket";
 import type { AircraftState } from "./useGlobalAircraft";
-import {
-  snapBounds,
-  isRegionTooLarge,
-  type RegionBounds,
-} from "../region-key";
+import { snapCenter, type RegionCenter } from "../region-key";
 
 interface RegionUpdateMessage {
   channel: string;
@@ -18,7 +14,7 @@ interface RegionUpdateMessage {
 const RESUB_DEBOUNCE_MS = 500;
 
 export function useRegionalAircraft(
-  bounds: RegionBounds | null,
+  center: RegionCenter | null,
   enabled: boolean
 ) {
   const ws = useWebSocket();
@@ -42,7 +38,7 @@ export function useRegionalAircraft(
 
   // Subscribe / re-subscribe when the snapped channel changes.
   useEffect(() => {
-    if (!enabled || !bounds || ws.status !== "connected") {
+    if (!enabled || !center || ws.status !== "connected") {
       if (currentChannelRef.current) {
         ws.unsubscribe(currentChannelRef.current);
         currentChannelRef.current = null;
@@ -53,17 +49,7 @@ export function useRegionalAircraft(
     }
 
     const timer = setTimeout(() => {
-      const snap = snapBounds(bounds);
-      if (isRegionTooLarge(snap)) {
-        if (currentChannelRef.current) {
-          ws.unsubscribe(currentChannelRef.current);
-          currentChannelRef.current = null;
-          setAircraft([]);
-          setLastUpdate(null);
-        }
-        return;
-      }
-
+      const snap = snapCenter(center);
       if (currentChannelRef.current === snap.channel) return;
 
       if (currentChannelRef.current) {
@@ -78,7 +64,7 @@ export function useRegionalAircraft(
     }, RESUB_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
-  }, [bounds, enabled, ws.status, ws.send, ws.unsubscribe]);
+  }, [center, enabled, ws.status, ws.send, ws.unsubscribe]);
 
   useEffect(() => {
     return () => {

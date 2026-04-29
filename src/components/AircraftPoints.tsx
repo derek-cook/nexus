@@ -14,7 +14,7 @@ type AircraftWithPosition = AircraftState & {
 
 export function AircraftPoints() {
   const { viewer } = useCesium();
-  const { bounds, regionalEnabled } = useViewportBounds(viewer);
+  const { center, regionalEnabled } = useViewportBounds(viewer);
   const {
     aircraft,
     globalAircraft,
@@ -23,7 +23,7 @@ export function AircraftPoints() {
     lastUpdate,
     isSubscribed,
   } = useInterpolatedAircraft({
-    regionalBounds: bounds,
+    regionalCenter: center,
     regionalEnabled,
   });
 
