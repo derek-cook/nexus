@@ -71,7 +71,6 @@ function applyGraphics(
       color: visual.onGround ? Cesium.Color.GRAY : Cesium.Color.YELLOW,
       outlineColor: Cesium.Color.BLACK,
       outlineWidth: 1,
-      disableDepthTestDistance: Number.POSITIVE_INFINITY,
     });
   }
 }
