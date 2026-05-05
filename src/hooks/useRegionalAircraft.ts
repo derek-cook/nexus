@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useWebSocket } from "./useWebSocket";
 import type { AircraftState } from "./useGlobalAircraft";
+import { aircraftInterpolation } from "../lib/aircraftInterpolation";
 import { snapCenter, type RegionCenter } from "../region-key";
 
 interface RegionUpdateMessage {
@@ -13,14 +14,28 @@ interface RegionUpdateMessage {
 
 const RESUB_DEBOUNCE_MS = 500;
 
+interface Options {
+  onBatch?: (fixes: AircraftState[], timestamp: number) => void;
+}
+
+// Thin transport: subscribe to the snapped regional channel, push fixes into
+// the interpolation service (additive — never removes), then fire onBatch.
+// The viewport-driven snapping logic stays here so the entity manager doesn't
+// have to know about region keys.
 export function useRegionalAircraft(
   center: RegionCenter | null,
-  enabled: boolean
+  enabled: boolean,
+  { onBatch }: Options = {}
 ) {
   const ws = useWebSocket();
   const [aircraft, setAircraft] = useState<AircraftState[]>([]);
   const [lastUpdate, setLastUpdate] = useState<number | null>(null);
   const currentChannelRef = useRef<string | null>(null);
+
+  const onBatchRef = useRef(onBatch);
+  useEffect(() => {
+    onBatchRef.current = onBatch;
+  }, [onBatch]);
 
   // Filter region-update messages onto whatever channel is currently active.
   useEffect(() => {
@@ -30,8 +45,14 @@ export function useRegionalAircraft(
         regionMsg?.type === "region-update" &&
         regionMsg?.channel === currentChannelRef.current
       ) {
+        aircraftInterpolation.updateFromFix(
+          regionMsg.aircraft,
+          regionMsg.timestamp,
+          { removeMissing: false }
+        );
         setAircraft(regionMsg.aircraft);
         setLastUpdate(regionMsg.timestamp);
+        onBatchRef.current?.(regionMsg.aircraft, regionMsg.timestamp);
       }
     });
   }, [ws.addMessageListener]);

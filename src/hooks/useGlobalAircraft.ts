@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useWebSocket } from "./useWebSocket";
+import { aircraftInterpolation } from "../lib/aircraftInterpolation";
 
 export interface AircraftState {
   icao24: string;
@@ -28,37 +29,55 @@ interface AircraftUpdateMessage {
   aircraft: AircraftState[];
 }
 
-export function useGlobalAircraft() {
+const GLOBAL_CHANNEL = "aircraft:global";
+
+interface Options {
+  onBatch?: (fixes: AircraftState[], timestamp: number) => void;
+}
+
+// Thin transport: subscribe to the global channel, push fixes straight into
+// the interpolation service (canonical worldwide snapshot — owns removal),
+// and fire onBatch so the entity manager can update Cesium imperatively.
+// No bulk aircraft array in React state.
+export function useGlobalAircraft({ onBatch }: Options = {}) {
   const ws = useWebSocket();
-  const [aircraft, setAircraft] = useState<AircraftState[]>([]);
   const [lastUpdate, setLastUpdate] = useState<number | null>(null);
 
+  const onBatchRef = useRef(onBatch);
   useEffect(() => {
-    const unsubscribe = ws.addMessageListener((msg) => {
-      if (msg.type === "connected") {
-        ws.subscribe("aircraft:global");
-      }
+    onBatchRef.current = onBatch;
+  }, [onBatch]);
 
-      const aircraftMsg = msg as AircraftUpdateMessage;
+  useEffect(() => {
+    const removeListener = ws.addMessageListener((msg) => {
+      const aircraftMsg = msg as unknown as AircraftUpdateMessage;
       if (
-        aircraftMsg?.channel === "aircraft:global" &&
+        aircraftMsg?.channel === GLOBAL_CHANNEL &&
         aircraftMsg?.type === "aircraft-update"
       ) {
-        setAircraft(aircraftMsg.aircraft);
+        aircraftInterpolation.updateFromFix(
+          aircraftMsg.aircraft,
+          aircraftMsg.timestamp,
+          { removeMissing: true }
+        );
         setLastUpdate(aircraftMsg.timestamp);
+        onBatchRef.current?.(aircraftMsg.aircraft, aircraftMsg.timestamp);
       }
     });
 
+    if (ws.status === "connected") {
+      ws.subscribe(GLOBAL_CHANNEL);
+    }
+
     return () => {
-      unsubscribe();
+      removeListener();
+      if (ws.status === "connected") ws.unsubscribe(GLOBAL_CHANNEL);
     };
-  }, [ws.subscribe, ws.addMessageListener]);
+  }, [ws.status, ws.subscribe, ws.unsubscribe, ws.addMessageListener]);
 
   return {
-    aircraft,
     lastUpdate,
-    count: aircraft.length,
     status: ws.status,
-    isSubscribed: ws.subscribedChannels.has("aircraft:global"),
+    isSubscribed: ws.subscribedChannels.has(GLOBAL_CHANNEL),
   };
 }

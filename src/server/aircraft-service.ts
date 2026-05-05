@@ -4,7 +4,7 @@ import { REGION_CHANNEL_PREFIX } from "../region-key";
 
 const GLOBAL_POLL_MS = Number(process.env.GLOBAL_POLL_MS) || 120_000;
 const TRACK_POLL_MS = Number(process.env.TRACK_POLL_MS) || 2_000;
-const REGION_POLL_MS = Number(process.env.REGION_POLL_MS) || 3_000;
+const REGION_POLL_MS = Number(process.env.REGION_POLL_MS) || 10_000;
 
 export const GLOBAL_CHANNEL = "aircraft:global";
 export const TRACK_CHANNEL_PREFIX = "aircraft:track:";

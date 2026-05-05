@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useWebSocket } from "./useWebSocket";
 import type { AircraftState } from "./useGlobalAircraft";
+import { aircraftInterpolation } from "../lib/aircraftInterpolation";
 
 interface TrackUpdateMessage {
   channel: string;
@@ -9,14 +10,29 @@ interface TrackUpdateMessage {
   aircraft: AircraftState;
 }
 
-export function useTrackedAircraft(icao24: string | null) {
+interface Options {
+  onUpdate?: (fix: AircraftState, timestamp: number) => void;
+}
+
+// Thin transport: subscribe to a per-icao high-cadence track channel and
+// push each fix into the interpolation service. The tracked entity reads
+// interpolated positions via CallbackPositionProperty at 60 fps, so we
+// don't need to imperatively touch the entity here — refreshing the
+// baseline is enough.
+export function useTrackedAircraft(
+  icao24: string | null,
+  { onUpdate }: Options = {}
+) {
   const ws = useWebSocket();
-  const [aircraft, setAircraft] = useState<AircraftState | null>(null);
   const [lastUpdate, setLastUpdate] = useState<number | null>(null);
+
+  const onUpdateRef = useRef(onUpdate);
+  useEffect(() => {
+    onUpdateRef.current = onUpdate;
+  }, [onUpdate]);
 
   useEffect(() => {
     if (!icao24) {
-      setAircraft(null);
       setLastUpdate(null);
       return;
     }
@@ -28,8 +44,13 @@ export function useTrackedAircraft(icao24: string | null) {
         trackMsg?.channel === channel &&
         trackMsg?.type === "track-update"
       ) {
-        setAircraft(trackMsg.aircraft);
+        aircraftInterpolation.updateFromFix(
+          [trackMsg.aircraft],
+          trackMsg.timestamp,
+          { removeMissing: false }
+        );
         setLastUpdate(trackMsg.timestamp);
+        onUpdateRef.current?.(trackMsg.aircraft, trackMsg.timestamp);
       }
     });
 
@@ -49,5 +70,11 @@ export function useTrackedAircraft(icao24: string | null) {
     ws.addMessageListener,
   ]);
 
-  return { aircraft, lastUpdate };
+  const channel = icao24 ? `aircraft:track:${icao24.toLowerCase()}` : null;
+
+  return {
+    lastUpdate,
+    status: ws.status,
+    isSubscribed: channel ? ws.subscribedChannels.has(channel) : false,
+  };
 }
