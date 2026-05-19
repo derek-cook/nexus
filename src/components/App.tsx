@@ -23,8 +23,8 @@ export function App() {
     <div className="relative h-screen w-screen overflow-hidden">
       <Viewer
         full
-        animation={false}
-        shouldAnimate={true}
+        animation={false} // play/rewind/speed controls
+        shouldAnimate={true} // 60fps animation callbacks
         timeline={false}
         sceneMode={Cesium.SceneMode.SCENE2D}
       >

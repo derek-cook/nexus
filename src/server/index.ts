@@ -245,7 +245,8 @@ const server = serve<WebSocketData>({
               ws.send(
                 JSON.stringify({
                   type: "error",
-                  error: "subscribe to aircraft:region:<key> requires valid circle",
+                  error:
+                    "subscribe to aircraft:region:<key> requires valid circle",
                 })
               );
               return;

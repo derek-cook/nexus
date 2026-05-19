@@ -58,7 +58,7 @@ export function AircraftSidebar({
       {open ? (
         <div className="w-[min(22rem,calc(100vw-2rem))]">
           <Card className="pointer-events-auto gap-0 overflow-hidden border-white/30 bg-background/85 py-0 shadow-xl backdrop-blur-md">
-            <CardHeader className="gap-3 pt-2 border-b bg-linear-to-r from-slate-950/95 via-slate-900/90 to-slate-950/95 text-slate-50">
+            <CardHeader className="gap-3 pt-2 border-b bg-slate-950 text-slate-50">
               <div className="flex items-center justify-between gap-3">
                 <CardTitle className="flex items-center gap-2 text-sm tracking-wide uppercase">
                   <Plane className="size-4" />
@@ -115,7 +115,8 @@ export function AircraftSidebar({
                         variant="ghost"
                         className={cn(
                           "h-auto w-full items-start justify-start rounded-lg border border-transparent px-3 py-2 text-left",
-                          isSelected && "border-sky-300 bg-sky-100/80 text-sky-950"
+                          isSelected &&
+                            "border-sky-300 bg-sky-100/80 text-sky-950"
                         )}
                         onClick={() => onSelectAircraft(aircraftItem.icao24)}
                       >
