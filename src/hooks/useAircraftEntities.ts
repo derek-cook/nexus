@@ -53,7 +53,8 @@ function applyGraphics(
     entity.billboard = new Cesium.BillboardGraphics({
       image: getAircraftIconUrl(visual.iconType),
       color: visual.onGround ? Cesium.Color.GRAY : Cesium.Color.YELLOW,
-      scale: 0.2,
+      width: 32,
+      height: 32,
       rotation: -Cesium.Math.toRadians(visual.trueTrack ?? 0),
       alignedAxis: Cesium.Cartesian3.UNIT_Z,
       verticalOrigin: Cesium.VerticalOrigin.CENTER,
