@@ -1,13 +1,7 @@
-import {
-  Viewer,
-  CameraFlyTo,
-  RectangleGraphics,
-  Entity,
-  Clock,
-  Globe,
-} from "resium";
+import { Viewer, CameraFlyTo, RectangleGraphics, Entity } from "resium";
 import * as Cesium from "cesium";
 import { AircraftLayer } from "./AircraftLayer";
+import { CameraConfig } from "./CameraConfig";
 
 const LAX_LON = -118.4079;
 const LAX_LAT = 33.9416;
@@ -40,6 +34,7 @@ export function App() {
           />
         </Entity>
         <AircraftLayer />
+        <CameraConfig />
         <CameraFlyTo destination={LAX_RECT} />
       </Viewer>
     </div>
