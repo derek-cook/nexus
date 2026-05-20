@@ -12,6 +12,7 @@ import { projectPosition, type GeoPosition } from "./geoMath";
 export interface AircraftBaseline {
   icao24: string;
   callsign: string | null;
+  typecode: string | null;
   iconType: string;
   latitude: number;
   longitude: number;
@@ -71,6 +72,7 @@ class AircraftInterpolationService {
       this.baselines.set(ac.icao24, {
         icao24: ac.icao24,
         callsign: ac.callsign,
+        typecode: ac.typecode,
         iconType: ac.iconType,
         latitude: ac.latitude,
         longitude: ac.longitude,

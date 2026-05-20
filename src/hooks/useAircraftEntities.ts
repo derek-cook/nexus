@@ -24,6 +24,7 @@ const REGIONAL_GRACE_MS = 30_000;
 const VALIDATE_TRACK_ICAO: string = "";
 
 interface VisualFields {
+  typecode: string | null;
   iconType: string;
   onGround: boolean;
   trueTrack: number | null;
@@ -51,7 +52,7 @@ function applyGraphics(
 
   if (is2D) {
     entity.billboard = new Cesium.BillboardGraphics({
-      image: getAircraftIconUrl(visual.iconType),
+      image: getAircraftIconUrl(visual.typecode, visual.iconType),
       color: visual.onGround ? Cesium.Color.GRAY : Cesium.Color.YELLOW,
       width: 32,
       height: 32,
